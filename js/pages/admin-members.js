@@ -8,8 +8,13 @@ Pages.adminMembers = {
   currentPage: 1,
   perPage: 10,
 
-  render() {
+  render(params = {}) {
     if (!Auth.requireAdmin()) return;
+    
+    if (params.filter) {
+      this.currentFilter = params.filter;
+    }
+
     const members = this.getFilteredMembers();
     const content = `
       <div class="page-header">
@@ -311,8 +316,12 @@ Pages.adminMembers = {
         ` : ''}
 
         <!-- Documents -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+          <div style="font-size:0.8rem;font-weight:700;color:var(--clr-primary);text-transform:uppercase;letter-spacing:0.05em">📁 Documents (${docs.length})</div>
+          <button class="btn btn-xs btn-outline" onclick="document.getElementById('admin-member-doc-upload').click()">+ Add Doc</button>
+          <input type="file" id="admin-member-doc-upload" style="display:none" multiple onchange="Pages.adminMembers.handleAdminFileUpload('${id}', this)"/>
+        </div>
         ${docs.length ? `
-          <div style="font-size:0.8rem;font-weight:700;color:var(--clr-primary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem">📁 Documents (${docs.length})</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem">
             ${docs.map(d => `
               <div style="background:var(--clr-surface-2);border-radius:var(--radius);padding:0.75rem;border:1px solid var(--clr-border)">
@@ -330,7 +339,7 @@ Pages.adminMembers = {
               </div>
             `).join('')}
           </div>
-        ` : ''}
+        ` : '<div style="padding:1rem;text-align:center;color:var(--clr-text-muted);font-size:0.8rem;background:var(--clr-surface-2);border-radius:var(--radius);margin-bottom:1rem">No documents on file</div>'}
 
         <!-- Signature -->
         ${sigs.length ? `
@@ -349,6 +358,26 @@ Pages.adminMembers = {
        <button class="btn btn-outline" onclick="Utils.closeModal();Pages.adminMembers.sendUpdateLink('${id}')">📨 Send Update Link</button>
        <button class="btn btn-primary" onclick="Utils.closeModal();PDF.memberDetail('${id}')">📄 Export PDF</button>`
     );
+  },
+
+  async handleAdminFileUpload(memberId, input) {
+    const files = Array.from(input.files);
+    if (!files.length) return;
+
+    Utils.toast('Uploading documents...', 'info');
+    for (const f of files) {
+      const dataUri = await Utils.fileToDataUri(f);
+      DB.saveDocument({
+        memberId,
+        filename: f.name,
+        type: 'other',
+        size: f.size,
+        dataUri
+      });
+    }
+
+    Utils.toast(`Successfully added ${files.length} document(s)`, 'success');
+    this.viewMember(memberId);
   },
 
   approveMember(id) {
@@ -415,11 +444,27 @@ Pages.adminMembers = {
         `).join('')}
       </div>`,
       `<button class="btn btn-ghost" onclick="Utils.closeModal()">Cancel</button>
-       <button class="btn btn-primary" onclick="
-         const s = document.querySelector('input[name=new-status]:checked');
-         if(s){DB.updateMemberStatus('${id}',s.value);Utils.closeModal();Pages.adminMembers.render();Utils.toast('Status updated','success');}
-       ">Save</button>`
+       <button class="btn btn-primary" onclick="Pages.adminMembers.handleStatusChange('${id}', '${m.status}')">Save</button>`
     );
+  },
+
+  handleStatusChange(id, oldStatus) {
+    const s = document.querySelector('input[name=new-status]:checked');
+    if (s) {
+      const newStatus = s.value;
+      DB.updateMemberStatus(id, newStatus);
+      DB.addAuditLog(id, 'member', 'status_changed', { old: oldStatus }, { new: newStatus });
+      
+      // Notify member of status change
+      Notifications.sendTemplatedEmail(id, 'tpl_general', { 
+        subject: 'Abeingo BBF – Membership Status Update',
+        body: `Your membership status has been updated to <strong>${newStatus.toUpperCase()}</strong>.\n\nIf you have any questions, please contact the administrator.` 
+      });
+
+      Utils.closeModal();
+      this.render();
+      Utils.toast('Status updated', 'success');
+    }
   },
 
   async sendUpdateLink(id) {

@@ -70,6 +70,28 @@ const Auth = {
       return false;
     }
     return true;
+  },
+
+  resetPassword(memberId, type, newPassword) {
+    if (type === 'admin') {
+      const admins = DB.get(DB.KEYS.admins);
+      const index = admins.findIndex(a => a.id === memberId);
+      if (index >= 0) {
+        admins[index].password = newPassword;
+        admins[index].updatedAt = new Date().toISOString();
+        DB.set(DB.KEYS.admins, admins);
+        return true;
+      }
+    } else {
+      const members = DB.getMembers();
+      const index = members.findIndex(m => m.id === memberId);
+      if (index >= 0) {
+        members[index].password = newPassword;
+        DB.set(DB.KEYS.members, members);
+        return true;
+      }
+    }
+    return false;
   }
 };
 

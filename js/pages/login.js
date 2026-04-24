@@ -35,7 +35,7 @@ Pages.login = {
                   <input type="checkbox" id="remember-me"/>
                   <span class="checkbox-label" style="font-size:0.8rem">${I18N.t('rememberMe')}</span>
                 </label>
-                <span style="font-size:0.8rem;color:var(--clr-primary);cursor:pointer" onclick="Pages.login.forgotPassword()">${I18N.t('forgotPassword')}</span>
+                <span style="font-size:0.8rem;color:var(--clr-primary);cursor:pointer" onclick="Pages.login.forgotPassword('${type}')">${I18N.t('forgotPassword')}</span>
               </div>
               <button type="submit" class="btn btn-primary" style="width:100%;padding:0.9rem" id="login-btn">
                 <span>🔐</span> ${I18N.t('login')}
@@ -120,16 +120,39 @@ Pages.login = {
     }, 600);
   },
 
-  forgotPassword() {
+  forgotPassword(type = 'member') {
+    const isAdmin = type === 'admin';
     Utils.showModal(
       '🔑 Reset Password',
       `<div class="form-field">
-        <label class="field-label">Enter your admin email</label>
-        <input type="email" id="reset-email" class="field-input" placeholder="admin@abeingo.org"/>
+        <label class="field-label">Enter your registered email</label>
+        <input type="email" id="reset-email-input" class="field-input" placeholder="your@email.com"/>
       </div>
-      <p style="font-size:0.8rem;color:var(--clr-text-muted);margin-top:0.5rem">For this demo, please contact your system administrator directly.</p>`,
+      <p style="font-size:0.8rem;color:var(--clr-text-muted);margin-top:0.75rem">A secure password reset link will be sent to your email.</p>`,
       `<button class="btn btn-ghost" onclick="Utils.closeModal()">Cancel</button>
-       <button class="btn btn-primary" onclick="Utils.closeModal();Utils.toast('Password reset instructions sent (simulated)', 'info')">Send Reset Link</button>`
+       <button class="btn btn-primary" id="send-reset-btn" onclick="Pages.login.handleForgotPasswordRequest('${type}')">Send Reset Link</button>`
     );
+  },
+
+  async handleForgotPasswordRequest(type) {
+    const email = document.getElementById('reset-email-input').value.trim();
+    if (!email || !Utils.isValidEmail(email)) { Utils.toast('Please enter a valid email', 'error'); return; }
+
+    const btn = document.getElementById('send-reset-btn');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    const user = type === 'admin' ? DB.getAdminByEmail(email) : DB.getMemberByEmail(email);
+    
+    if (user) {
+      const token = DB.generateToken(type === 'admin' ? 'admin_reset' : 'password_reset', user.id, email);
+      const link = Utils.generateLink(token.id, 'reset-password');
+      await Notifications.sendPasswordReset(user, link);
+      Utils.toast('Reset link sent to ' + email, 'success');
+    } else {
+      // For security, still say sent
+      Utils.toast('If that email exists, reset instructions have been sent.', 'info');
+    }
+    Utils.closeModal();
   }
 };

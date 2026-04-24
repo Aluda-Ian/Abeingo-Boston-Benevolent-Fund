@@ -296,7 +296,7 @@ Pages.adminSettings = {
     Utils.toast('Connecting to SMTP server...', 'info');
 
     try {
-      const response = await fetch('http://localhost:3000/api/test-smtp', {
+      const response = await fetch('http://localhost:3500/api/test-smtp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, smtpSettings })

@@ -2,6 +2,10 @@
    ADMIN LAYOUT (shared sidebar/topbar)
    =========================== */
 function renderAdminLayout(pageId, contentHtml) {
+  // Ensure preloader is removed if still present
+  const preloader = document.getElementById('loading-screen');
+  if (preloader) preloader.remove();
+
   const user = Auth.currentUser;
   const navItems = [
     { id: 'dashboard',    icon: '🏠', label: 'Dashboard' },
@@ -13,6 +17,7 @@ function renderAdminLayout(pageId, contentHtml) {
 
   const pendingCount = DB.getMembers().filter(m => m.status === 'pending').length;
   const unreadNotifs = DB.getNotifications().filter(n => !n.read).length;
+  const openTickets = (DB.getTickets ? DB.getTickets() : []).filter(t => t.status === 'open').length;
 
   const navHtml = navItems
     .filter(n => !n.superOnly || Auth.isSuperAdmin())
@@ -41,11 +46,28 @@ function renderAdminLayout(pageId, contentHtml) {
         <nav class="sidebar-nav">
           <div class="sidebar-section-label">Navigation</div>
           ${navHtml}
+          
+          <div class="sidebar-section-label" style="margin-top:1rem">Support & CRM</div>
+          <div class="sidebar-nav-item ${pageId === 'tickets' ? 'active' : ''}" onclick="Router.navigate('tickets')">
+            <span class="sidebar-nav-icon">🎫</span>
+            <span>Support Tickets</span>
+            ${openTickets > 0 ? `<span class="sidebar-nav-badge" style="background:#dc2626">${openTickets}</span>` : ''}
+          </div>
+          <div class="sidebar-nav-item ${pageId === 'messages' ? 'active' : ''}" onclick="Router.navigate('messages')">
+            <span class="sidebar-nav-icon">💬</span>
+            <span>Member Messages</span>
+          </div>
+          <div class="sidebar-nav-item ${pageId === 'committees' ? 'active' : ''}" onclick="Router.navigate('committees')">
+            <span class="sidebar-nav-icon">👥</span>
+            <span>Committees</span>
+          </div>
+
           <div class="sidebar-section-label" style="margin-top:1rem">Communications</div>
           <div class="sidebar-nav-item ${pageId === 'emails' ? 'active' : ''}" onclick="Router.navigate('emails')">
             <span class="sidebar-nav-icon">📢</span>
             <span>Email Templates</span>
           </div>
+
           <div class="sidebar-section-label" style="margin-top:1rem">Member Access</div>
           <div class="sidebar-nav-item" onclick="Router.navigate('member-login')">
             <span class="sidebar-nav-icon">🧑‍💼</span>
@@ -71,7 +93,19 @@ function renderAdminLayout(pageId, contentHtml) {
             </div>
           </div>
           <div class="topbar-right">
-            <select class="lang-select" onchange="I18N.setLang(this.value)">
+            <div style="display:flex;align-items:center;gap:1.25rem;margin-right:1rem;border-right:1px solid var(--clr-border);padding-right:1.25rem">
+              <!-- Messages Icon -->
+              <div class="topbar-icon-btn" onclick="Router.navigate('messages')" title="Messages">
+                💬
+                <span class="icon-badge"></span>
+              </div>
+              <!-- Notification Bell -->
+              <div class="topbar-icon-btn" onclick="Pages.adminDashboard.showNotifications()" title="Notifications">
+                🔔
+                ${unreadNotifs > 0 ? `<span class="icon-badge">${unreadNotifs}</span>` : ''}
+              </div>
+            </div>
+            <select class="lang-select" onchange="I18N.setLang(this.value)" style="margin-right:1rem">
               <option value="en" ${I18N.currentLang==='en'?'selected':''}>🇺🇸 EN</option>
               <option value="pt" ${I18N.currentLang==='pt'?'selected':''}>🇧🇷 PT</option>
               <option value="es" ${I18N.currentLang==='es'?'selected':''}>🇪🇸 ES</option>
@@ -126,27 +160,27 @@ Pages.adminDashboard = {
 
       <!-- Stats -->
       <div class="stats-grid">
-        <div class="stat-card" style="--stat-color:var(--clr-primary);--stat-icon-bg:#EFF6FF" onclick="Router.navigate('members')">
+        <div class="stat-card" style="--stat-color:var(--clr-primary);--stat-icon-bg:#EFF6FF" onclick="Router.navigate('members', { filter: 'all' })">
           <div class="stat-card-icon">👥</div>
           <div class="stat-card-value">${members.length}</div>
           <div class="stat-card-label">Total Members</div>
         </div>
-        <div class="stat-card" style="--stat-color:var(--clr-active);--stat-icon-bg:#DCFCE7" onclick="Router.navigate('members')">
+        <div class="stat-card" style="--stat-color:var(--clr-active);--stat-icon-bg:#DCFCE7" onclick="Router.navigate('members', { filter: 'active' })">
           <div class="stat-card-icon">✅</div>
           <div class="stat-card-value">${active}</div>
           <div class="stat-card-label">Active Members</div>
         </div>
-        <div class="stat-card" style="--stat-color:var(--clr-grace);--stat-icon-bg:#FEF3C7" onclick="Router.navigate('members')">
+        <div class="stat-card" style="--stat-color:var(--clr-grace);--stat-icon-bg:#FEF3C7" onclick="Router.navigate('members', { filter: 'grace' })">
           <div class="stat-card-icon">⏳</div>
           <div class="stat-card-value">${grace}</div>
           <div class="stat-card-label">Grace Period</div>
         </div>
-        <div class="stat-card" style="--stat-color:#7c3aed;--stat-icon-bg:#EDE9FE" onclick="Router.navigate('members')">
+        <div class="stat-card" style="--stat-color:#7c3aed;--stat-icon-bg:#EDE9FE" onclick="Router.navigate('members', { filter: 'pending' })">
           <div class="stat-card-icon">⌛</div>
           <div class="stat-card-value">${pending}</div>
           <div class="stat-card-label">Pending Approval</div>
         </div>
-        <div class="stat-card" style="--stat-color:var(--clr-accent);--stat-icon-bg:#FFFBEB">
+        <div class="stat-card" style="--stat-color:var(--clr-accent);--stat-icon-bg:#FFFBEB" onclick="Router.navigate('contributions')">
           <div class="stat-card-icon">💰</div>
           <div class="stat-card-value">${Utils.formatCurrency(totalKitty)}</div>
           <div class="stat-card-label">Total Kitty Balance</div>
@@ -271,6 +305,44 @@ Pages.adminDashboard = {
     const overlay = document.getElementById('sidebar-overlay');
     if (sidebar) sidebar.classList.toggle('open');
     if (overlay) overlay.classList.toggle('active');
+  },
+
+  showNotifications() {
+    const notifs = DB.getNotifications().sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const unread = notifs.filter(n => !n.read).length;
+
+    Utils.showModal(
+      `🔔 Notifications ${unread > 0 ? `<span class="badge badge-active" style="margin-left:0.5rem">${unread} new</span>` : ''}`,
+      `<div class="notif-list-modal">
+        ${notifs.length ? notifs.map(n => `
+          <div class="notif-item ${n.read ? '' : 'unread'}" onclick="Pages.adminDashboard.toggleRead('${n.id}', event)">
+            <div class="notif-icon">${this.actionIcon(n.type)}</div>
+            <div class="notif-content">
+              <div class="notif-subject">${Utils.sanitize(n.subject || 'Notification')}</div>
+              <div class="notif-msg">${Utils.sanitize(n.message).substring(0, 100)}...</div>
+              <div class="notif-time">${Utils.formatDateTime(n.timestamp)}</div>
+            </div>
+            ${!n.read ? '<div class="notif-dot"></div>' : ''}
+          </div>
+        `).join('') : '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-title">No notifications</div></div>'}
+      </div>`,
+      `<button class="btn btn-ghost" onclick="Utils.closeModal()">Close</button>
+       ${notifs.some(n => !n.read) ? `<button class="btn btn-primary" onclick="Pages.adminDashboard.markAllRead()">Mark all as read</button>` : ''}`
+    );
+  },
+
+  toggleRead(id, event) {
+    DB.markNotificationRead(id);
+    this.showNotifications();
+    this.render(); // Update topbar
+  },
+
+  markAllRead() {
+    const notifs = DB.getNotifications();
+    notifs.forEach(n => n.read = true);
+    DB.set(DB.KEYS.notifications, notifs);
+    this.showNotifications();
+    this.render();
   },
 
   showUserMenu() {

@@ -351,6 +351,9 @@ Pages.update = {
     DB.saveMember({ ...this.formData, id: memberId });
     DB.useToken(this.token.id);
 
+    // Send automated success email to member
+    Notifications.sendProfileUpdateSuccess(memberId);
+
     // Save new signature
     if (this.signatureData && waiver) {
       DB.saveSignature(memberId, waiver.id, this.signatureData);

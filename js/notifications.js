@@ -3,132 +3,175 @@
    Simulated email/WhatsApp notification system
    =========================== */
 const Notifications = {
-  // Send payment reminder to all active members
-  bulkPaymentReminder(channel = 'email') {
-    const members = DB.getMembers().filter(m => m.status === 'active');
-    let sent = 0;
-    members.forEach(m => {
-      const unpaid = DB.getMemberContributions(m.id).filter(c => c.status === 'unpaid');
-      if (unpaid.length > 0) {
-        const total = unpaid.reduce((sum, c) => sum + (c.amount || 0), 0);
-        const msg = `Dear ${Utils.fullName(m)}, you have ${unpaid.length} outstanding contribution(s) totaling ${Utils.formatCurrency(total)}. Please remit payment within the allotted time to avoid late fees. Thank you.`;
-        DB.addNotification({
-          memberId: m.id,
-          type: 'payment_reminder',
-          channel,
-          message: msg,
-          subject: 'Abeingo Boston Benevolent Fund – Payment Reminder',
-          status: 'sent',
-          recipientEmail: m.email,
-          recipientPhone: m.phone
-        });
-        sent++;
-      }
+  // Generic templated email sender
+  async sendTemplatedEmail(memberId, templateId, customData = {}) {
+    const member = DB.getMember(memberId);
+    if (!member) return;
+
+    const templates = DB.getEmailTemplates();
+    const tpl = templates.find(t => t.id === templateId) || templates.find(t => t.isDefault);
+    if (!tpl) return;
+
+    const adminName = (window.Auth && Auth.currentUser) ? Utils.fullName(Auth.currentUser) : 'Abeingo Admin';
+    const dateStr = Utils.formatDate(new Date().toISOString());
+    
+    const data = {
+      member_name: member.firstName,
+      member_id: member.id,
+      admin_name: adminName,
+      date: dateStr,
+      balance: Utils.formatCurrency(member.kittyBalance),
+      ...customData
+    };
+
+    let subject = tpl.subject;
+    let body = tpl.body;
+
+    // Replace placeholders
+    Object.keys(data).forEach(key => {
+      const regex = new RegExp(`{${key}}`, 'g');
+      subject = subject.replace(regex, data[key]);
+      body = body.replace(regex, data[key]);
     });
-    Utils.toast(`Payment reminders sent to ${sent} members via ${channel}`, 'success');
-    return sent;
+
+    const notification = {
+      memberId: member.id,
+      type: templateId.replace('tpl_', ''),
+      channel: 'email',
+      message: Utils.wrapEmailBody(body),
+      subject: subject,
+      status: 'sent',
+      recipientEmail: member.email
+    };
+
+    try {
+      await DB.apiSendEmails([notification]);
+      return true;
+    } catch (err) {
+      console.error('Failed to send notification:', err);
+      return false;
+    }
   },
 
-  // Send death notification to all active members
-  sendDeathNotification(deathEvent) {
+  // 1. Success after member fills registration form
+  async sendRegistrationSuccess(memberId) {
+    return this.sendTemplatedEmail(memberId, 'tpl_reg_success');
+  },
+
+  // 2. Success after member updates profile
+  async sendProfileUpdateSuccess(memberId) {
+    return this.sendTemplatedEmail(memberId, 'tpl_update_link', { subject: 'Profile Updated Successfully' }); // Custom override if needed
+  },
+
+  // 3. Admin approves member
+  async sendApprovalNotification(memberId) {
+    return this.sendTemplatedEmail(memberId, 'tpl_approval');
+  },
+
+  // 4. Payment Receipt
+  async sendPaymentReceipt(memberId, amount) {
+    return this.sendTemplatedEmail(memberId, 'tpl_payment', { amount: Utils.formatCurrency(amount) });
+  },
+
+  // 5. Death Notification (Custom logic for bulk)
+  async sendDeathNotification(deathEvent) {
     const members = DB.getMembers().filter(m => m.status === 'active');
-    members.forEach(m => {
+    const tpl = DB.getEmailTemplates().find(t => t.id === 'tpl_death');
+    
+    const adminName = (window.Auth && Auth.currentUser) ? Utils.fullName(Auth.currentUser) : 'Abeingo Admin';
+    const dateStr = Utils.formatDate(new Date().toISOString());
+
+    const notifications = members.map(m => {
       const contribution = DB.getMemberContributions(m.id).find(c => c.deathEventId === deathEvent.id);
       const amount = contribution ? Utils.formatCurrency(contribution.amount) : 'TBD';
       const dueDate = contribution ? Utils.formatDate(contribution.dueDate) : 'TBD';
-      const msg = `Dear ${Utils.fullName(m)}, we regret to inform you of the passing of ${deathEvent.deceasedName}. As per our fund rules, a contribution of ${amount} is due by ${dueDate}. Please make your payment promptly. Late fees apply after the due date. Our condolences to the bereaved family.`;
-      DB.addNotification({
+
+      let body = tpl.body
+        .replace(/{member_name}/g, m.firstName)
+        .replace(/\[Name\]/g, deathEvent.deceasedName)
+        .replace(/{admin_name}/g, adminName);
+      
+      body += `<br><br><strong>Contribution Required:</strong> ${amount}<br><strong>Due Date:</strong> ${dueDate}`;
+
+      return {
         memberId: m.id,
         type: 'death_notification',
         channel: 'email',
-        message: msg,
-        subject: `Abeingo Boston Benevolent Fund – Death Notification: ${deathEvent.deceasedName}`,
+        message: Utils.wrapEmailBody(body),
+        subject: tpl.subject.replace(/\[Name\]/g, deathEvent.deceasedName),
         status: 'sent',
         recipientEmail: m.email
-      });
+      };
     });
-    Utils.toast(`Death notification sent to ${members.length} members`, 'info');
-  },
 
-  // Send semi-annual verification reminder
-  sendSemiAnnualReminder(memberId) {
-    const member = DB.getMember(memberId);
-    if (!member) return;
-    const result = Utils.sendUpdateLink(memberId);
-    if (!result) return;
-    const msg = `Dear ${Utils.fullName(member)}, it's time for your semi-annual information verification. Please review and confirm your profile using this link: ${result.link}\n\nThis link expires in 72 hours. If your information is up to date, please still complete the form to confirm. Thank you.`;
-    DB.addNotification({
-      memberId,
-      type: 'semi_annual_reminder',
-      channel: 'email',
-      message: msg,
-      subject: 'Abeingo Boston Benevolent Fund – Semi-Annual Verification Required',
-      status: 'sent',
-      recipientEmail: member.email
-    });
-  },
-
-  // Send bulk semi-annual reminders (to all members not verified in 6+ months)
-  bulkSemiAnnualReminder() {
-    const sixMonthsAgo = new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000).toISOString();
-    const members = DB.getMembers().filter(m => 
-      ['active', 'grace'].includes(m.status) && 
-      (!m.lastVerified || m.lastVerified < sixMonthsAgo)
-    );
-    members.forEach(m => this.sendSemiAnnualReminder(m.id));
-    Utils.toast(`Semi-annual reminders sent to ${members.length} members`, 'success');
-    return members.length;
-  },
-
-  // Approval notification to member
-  sendApprovalNotification(memberId) {
-    const member = DB.getMember(memberId);
-    if (!member) return;
-    const msg = `Dear ${Utils.fullName(member)}, congratulations! Your membership application to the Abeingo Boston Benevolent Fund has been approved. Your member ID is ${member.id}. You can now access your member portal. Welcome to our family!`;
-    DB.addNotification({
-      memberId,
-      type: 'registration_approved',
-      channel: 'email',
-      message: msg,
-      subject: 'Abeingo Boston Benevolent Fund – Membership Approved',
-      status: 'sent',
-      recipientEmail: member.email
-    });
-    Utils.toast(`Approval email sent to ${Utils.fullName(member)}`, 'success');
-  },
-
-  // Registration link for new member (with name/email)
-  sendRegistrationLinkNew(email, name) {
-    return Utils.sendRegistrationLink(email, name);
-  },
-
-  // Preview notification modal
-  previewNotification(memberId, type) {
-    const member = DB.getMember(memberId);
-    if (!member) return;
-
-    let subject = '', message = '';
-    if (type === 'registration') {
-      const result = Utils.sendRegistrationLink(member.email, Utils.fullName(member));
-      subject = 'Registration Link';
-      message = `Registration link: ${result.link}\nExpires: ${Utils.formatDateTime(result.token.expiresAt)}`;
-    } else if (type === 'update') {
-      const result = Utils.sendUpdateLink(memberId);
-      subject = 'Update Link';
-      message = result ? `Update link: ${result.link}\nExpires: ${Utils.formatDateTime(result.token.expiresAt)}` : 'Could not generate link';
+    try {
+      await DB.apiSendEmails(notifications);
+      Utils.toast(`Bereavement notice sent to ${members.length} members`, 'success');
+    } catch (err) {
+      Utils.toast('Failed to send bereavement notices', 'error');
     }
+  },
 
-    Utils.showModal(
-      `📧 Notification Preview`,
-      `<div>
-        <div style="margin-bottom:1rem">
-          <strong>To:</strong> ${Utils.sanitize(member.email)}<br>
-          <strong>Subject:</strong> ${subject}
-        </div>
-        <div style="background:var(--clr-surface-2);border:1px solid var(--clr-border);border-radius:var(--radius);padding:1rem;font-size:0.875rem;white-space:pre-line">${Utils.sanitize(message)}</div>
-      </div>`,
-      `<button class="btn btn-ghost" onclick="Utils.closeModal()">Close</button>`
-    );
+  // 6. Payment Reminders (Unpaid contributions)
+  async bulkPaymentReminder() {
+    const members = DB.getMembers().filter(m => m.status === 'active');
+    let count = 0;
+    
+    for (const m of members) {
+      const unpaid = DB.getMemberContributions(m.id).filter(c => c.status === 'unpaid');
+      if (unpaid.length > 0) {
+        const total = unpaid.reduce((sum, c) => sum + (c.amount || 0), 0);
+        await this.sendTemplatedEmail(m.id, 'tpl_reminder', { 
+          body: `You have ${unpaid.length} outstanding contribution(s) totaling ${Utils.formatCurrency(total)}. Please remit payment promptly.` 
+        });
+        count++;
+      }
+    }
+    Utils.toast(`Reminders sent to ${count} members`, 'success');
+  },
+
+  async sendOTP(email, otp) {
+    const body = `
+      <div style="text-align:center">
+        <h2 style="color:var(--clr-primary)">Verification Code</h2>
+        <p>Your one-time password (OTP) for Abeingo Boston Benevolent Fund is:</p>
+        <div style="font-size:2.5rem;font-weight:800;letter-spacing:0.2em;color:var(--clr-accent);margin:1.5rem 0;padding:1rem;background:#f8fafc;border-radius:8px">${otp}</div>
+        <p style="font-size:0.8rem;color:#6b7280">This code will expire in 15 minutes. If you did not request this, please ignore this email.</p>
+      </div>
+    `;
+    const notification = {
+      type: 'otp',
+      channel: 'email',
+      message: Utils.wrapEmailBody(body),
+      subject: 'Verification Code: ' + otp,
+      status: 'sent',
+      recipientEmail: email
+    };
+    return DB.apiSendEmails([notification]);
+  },
+
+  async sendPasswordReset(member, link) {
+    const body = `
+      <h2>Password Reset Request</h2>
+      <p>Hi ${member.firstName},</p>
+      <p>We received a request to reset your password for the Abeingo Boston Benevolent Fund member portal.</p>
+      <div style="margin:2rem 0">
+        <a href="${link}" style="background:#1e3a5f;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Reset My Password</a>
+      </div>
+      <p>Or copy this link into your browser:</p>
+      <p style="font-size:0.8rem;color:#6b7280">${link}</p>
+      <p>This link will expire in 72 hours.</p>
+    `;
+    const notification = {
+      memberId: member.id,
+      type: 'password_reset',
+      channel: 'email',
+      message: Utils.wrapEmailBody(body),
+      subject: 'Reset Your Password – Abeingo BBBF',
+      status: 'sent',
+      recipientEmail: member.email
+    };
+    return DB.apiSendEmails([notification]);
   }
 };
 

@@ -2,8 +2,17 @@
    ADMIN REPORTS PAGE
    =========================== */
 Pages.adminReports = {
+  viewState: 'main', // 'main' or 'preview'
+  previewData: null,
+  previewType: '',
+
   render() {
     if (!Auth.requireAdmin()) return;
+    
+    if (this.viewState === 'preview') {
+      return this.renderPreview();
+    }
+
     const members = DB.getMembers();
     const contribs = DB.getContributions();
     const deaths = DB.getDeathEvents();
@@ -36,10 +45,10 @@ Pages.adminReports = {
           <div class="report-card-top">
             <div class="report-card-icon">👥</div>
             <div class="report-card-title">Member Roster</div>
-            <div class="report-card-desc">Preview all members before choosing export format.</div>
+            <div class="report-card-desc">Review all members before choosing export format.</div>
           </div>
           <div class="report-card-body">
-            <div class="report-card-meta">${members.length} members &bull; Click to preview</div>
+            <div class="report-card-meta">${members.length} members &bull; Click to review</div>
           </div>
         </div>
 
@@ -51,7 +60,7 @@ Pages.adminReports = {
             <div class="report-card-desc">Review financial contribution records.</div>
           </div>
           <div class="report-card-body">
-            <div class="report-card-meta">${contribs.length} entries &bull; Click to preview</div>
+            <div class="report-card-meta">${contribs.length} entries &bull; Click to review</div>
           </div>
         </div>
 
@@ -63,7 +72,7 @@ Pages.adminReports = {
             <div class="report-card-desc">Examine system activity and change logs.</div>
           </div>
           <div class="report-card-body">
-            <div class="report-card-meta">${DB.getAuditLog().length} events &bull; Click to preview</div>
+            <div class="report-card-meta">${DB.getAuditLog().length} events &bull; Click to review</div>
           </div>
         </div>
 
@@ -75,12 +84,12 @@ Pages.adminReports = {
             <div class="report-card-desc">Summary of all death events and payouts.</div>
           </div>
           <div class="report-card-body">
-            <div class="report-card-meta">${deaths.length} events &bull; Click to preview</div>
+            <div class="report-card-meta">${deaths.length} events &bull; Click to review</div>
           </div>
         </div>
       </div>
 
-      <!-- Rest of original sections (Waivers, Notifications) -->
+      <!-- Rest of original sections (Waivers) -->
       <div style="margin-top:var(--sp-8)">
         <h3 style="font-size:var(--text-xl);font-weight:700;margin-bottom:var(--sp-5)">📜 Waiver Version Control</h3>
         <div class="table-wrapper">
@@ -108,6 +117,70 @@ Pages.adminReports = {
     setTimeout(() => this.initCharts(), 100);
   },
 
+  renderPreview() {
+    const type = this.previewType;
+    const data = this.previewData;
+    let headers = [];
+    let rows = [];
+
+    if (type === 'members') {
+      headers = ['Name', 'Email', 'Status', 'Balance', 'Join Date'];
+      rows = data.map(m => [Utils.fullName(m), m.email, m.status, Utils.formatCurrency(m.kittyBalance), Utils.formatDate(m.joinDate)]);
+    } else if (type === 'contributions') {
+      headers = ['Member', 'Amount', 'Due Date', 'Status'];
+      rows = data.map(c => {
+        const m = DB.getMember(c.memberId);
+        return [m ? Utils.fullName(m) : 'Unknown', Utils.formatCurrency(c.amount), Utils.formatDate(c.dueDate), c.status];
+      });
+    } else if (type === 'audit') {
+      headers = ['Date', 'Entity', 'Action', 'By'];
+      rows = data.map(a => [Utils.formatDateTime(a.timestamp), a.entityType, a.action, a.performedBy]);
+    } else {
+      headers = ['ID', 'Date', 'Type'];
+      rows = data.map(i => [i.id, Utils.formatDate(i.createdAt || i.timestamp), type]);
+    }
+
+    const content = `
+      <div class="page-header">
+        <div class="page-header-top">
+          <div style="display:flex;align-items:center;gap:1rem">
+            <button class="btn btn-ghost" onclick="Pages.adminReports.goBack()" style="padding:0.5rem">⬅️</button>
+            <div>
+              <h1 class="page-title">👁️ Report Preview: ${type.charAt(0).toUpperCase() + type.slice(1)}</h1>
+              <p class="page-subtitle">Reviewing ${data.length} records found in the database.</p>
+            </div>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-outline" onclick="Utils.exportCSV('${type}.csv', Utils.membersToCSV(DB.getMembers()))">📊 Excel/CSV</button>
+            <button class="btn btn-primary" onclick="PDF.${type === 'members' ? 'membersReport' : type === 'contributions' ? 'contributionsReport' : 'auditReport'}(${type === 'members' ? 'DB.getMembers()' : ''})">📄 Download PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+    renderAdminLayout('reports', content);
+  },
+
+  goBack() {
+    this.viewState = 'main';
+    this.render();
+  },
+
+  showPreview(type, data) {
+    this.viewState = 'preview';
+    this.previewType = type;
+    this.previewData = data;
+    this.render();
+  },
+
   initCharts() {
     const members = DB.getMembers();
     const statusCounts = {
@@ -121,8 +194,12 @@ Pages.adminReports = {
     const paidCount = contribs.filter(c => c.status === 'paid').length;
     const unpaidCount = contribs.filter(c => c.status === 'unpaid').length;
 
+    const el1 = document.querySelector("#chart-status");
+    const el2 = document.querySelector("#chart-contribs");
+    if(!el1 || !el2) return;
+
     // Status Chart
-    new ApexCharts(document.querySelector("#chart-status"), {
+    new ApexCharts(el1, {
       series: Object.values(statusCounts),
       chart: { type: 'donut', height: 300, foreColor: '#94a3b8' },
       labels: ['Active', 'Grace', 'Pending', 'Other'],
@@ -132,7 +209,7 @@ Pages.adminReports = {
     }).render();
 
     // Contributions Chart
-    new ApexCharts(document.querySelector("#chart-contribs"), {
+    new ApexCharts(el2, {
       series: [{ name: 'Count', data: [paidCount, unpaidCount] }],
       chart: { type: 'bar', height: 300, foreColor: '#94a3b8', toolbar: { show: false } },
       plotOptions: { bar: { borderRadius: 4, distributed: true } },
@@ -140,51 +217,6 @@ Pages.adminReports = {
       xaxis: { categories: ['Paid', 'Unpaid'] },
       legend: { show: false }
     }).render();
-  },
-
-  showPreview(type, data) {
-    let headers = [];
-    let rows = [];
-
-    if (type === 'members') {
-      headers = ['Name', 'Email', 'Status', 'Balance'];
-      rows = data.map(m => [Utils.fullName(m), m.email, m.status, Utils.formatCurrency(m.kittyBalance)]);
-    } else if (type === 'contributions') {
-      headers = ['Member ID', 'Amount', 'Due Date', 'Status'];
-      rows = data.map(c => [c.memberId, Utils.formatCurrency(c.amount), Utils.formatDate(c.dueDate), c.status]);
-    } else if (type === 'audit') {
-      headers = ['Date', 'Entity', 'Action', 'By'];
-      rows = data.map(a => [Utils.formatDate(a.timestamp), a.entityType, a.action, a.performedBy]);
-    } else {
-      headers = ['ID', 'Date', 'Type'];
-      rows = data.map(i => [i.id, Utils.formatDate(i.createdAt || i.timestamp), type]);
-    }
-
-    const body = `
-      <div style="display:flex;flex-direction:column;gap:1rem">
-        <div class="alert alert-info" style="font-size:0.8rem">
-          <span class="alert-icon">📊</span>
-          <div class="alert-content">Reviewing <strong>${data.length}</strong> records. Choose your preferred export format below.</div>
-        </div>
-        <div class="table-wrapper" style="max-height:400px;overflow-y:auto">
-          <table class="data-table" style="font-size:0.8rem">
-            <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-            <tbody>
-              ${rows.slice(0, 100).map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
-              ${rows.length > 100 ? `<tr><td colspan="${headers.length}" style="text-align:center;color:var(--clr-text-muted)">... and ${rows.length - 100} more rows</td></tr>` : ''}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    `;
-
-    Utils.showModal(
-      `👁️ Data Preview: ${type.charAt(0).toUpperCase() + type.slice(1)}`,
-      body,
-      `<button class="btn btn-ghost" onclick="Utils.closeModal()">Close</button>
-       <button class="btn btn-outline" onclick="Utils.exportCSV('${type}.csv', Utils.membersToCSV(DB.getMembers()))">📊 Excel/CSV</button>
-       <button class="btn btn-primary" onclick="PDF.${type === 'members' ? 'membersReport' : type === 'contributions' ? 'contributionsReport' : 'auditReport'}(${type === 'members' ? 'DB.getMembers()' : ''})">📄 Export PDF</button>`
-    );
   },
 
   viewWaiver(id) {

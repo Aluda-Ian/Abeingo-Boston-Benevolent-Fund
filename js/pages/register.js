@@ -13,6 +13,8 @@ Pages.register = {
   token: null,
   memberId: null,
   uploadedFiles: {},
+  otpVerified: false,
+  otpLoading: false,
 
   steps: ['Personal Info', 'Family', 'Beneficiary', 'Documents', 'Waiver', 'Review'],
 
@@ -30,6 +32,12 @@ Pages.register = {
       this.memberId = result.token.memberId;
     } else {
       this.renderExpired('not_found');
+      return;
+    }
+
+    // OTP Verification check
+    if (!this.otpVerified) {
+      this.renderOTPVerification();
       return;
     }
 
@@ -81,6 +89,67 @@ Pages.register = {
 
     if (this.currentStep === 4) {
       setTimeout(() => this.initSignaturePad(), 100);
+    }
+  },
+
+  renderOTPVerification() {
+    document.getElementById('app-root').innerHTML = `
+      <div class="public-page">
+        <div class="public-header">
+          <div class="public-logo">A</div>
+          <div class="public-title">${I18N.t('appName')}</div>
+          <div class="public-subtitle">Email Verification Required</div>
+        </div>
+        <div class="form-card" style="max-width:420px">
+          <div class="form-card-body" style="text-align:center;padding:2.5rem">
+            <div style="font-size:3rem;margin-bottom:1.5rem">📧</div>
+            <h2 style="font-weight:700;font-size:1.25rem;margin-bottom:0.75rem">Check your email</h2>
+            <p style="color:var(--clr-text-muted);font-size:0.9rem;margin-bottom:2rem">We've sent a 6-digit verification code to <strong>${this.token.email}</strong> to ensure your security.</p>
+            
+            <div class="form-field">
+              <label class="field-label" style="text-align:left">Enter 6-Digit Code</label>
+              <input type="text" id="reg-otp-input" class="field-input" maxlength="6" placeholder="000000" style="text-align:center;font-size:1.5rem;letter-spacing:0.5rem;font-weight:700"/>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%;margin-top:1.5rem" id="verify-otp-btn" onclick="Pages.register.handleVerifyOTP()">Verify Code →</button>
+            
+            <div style="margin-top:2rem;font-size:0.8rem;color:var(--clr-text-muted)">
+              Didn't receive a code? <a href="#" onclick="Pages.register.handleResendOTP()" style="color:var(--clr-primary);font-weight:600">Resend Code</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Auto-send OTP on first render
+    if (!this.otpLoading) {
+      this.handleResendOTP();
+    }
+  },
+
+  async handleResendOTP() {
+    this.otpLoading = true;
+    const otp = DB.generateOTP(this.memberId, this.token.email);
+    Utils.toast('Verification code sent!', 'info');
+    await Notifications.sendOTP(this.token.email, otp);
+  },
+
+  async handleVerifyOTP() {
+    const otp = document.getElementById('reg-otp-input').value.trim();
+    if (otp.length !== 6) { Utils.toast('Please enter the 6-digit code', 'error'); return; }
+
+    const btn = document.getElementById('verify-otp-btn');
+    btn.disabled = true;
+    btn.textContent = 'Verifying...';
+
+    if (DB.verifyOTP(this.token.email, otp)) {
+      Utils.toast('Email verified successfully!', 'success');
+      this.otpVerified = true;
+      this.render();
+    } else {
+      Utils.toast('Invalid or expired code. Please try again.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Verify Code →';
     }
   },
 
@@ -434,13 +503,20 @@ Pages.register = {
     }
   },
 
-  handleFileUpload(type, input) {
+  async handleFileUpload(type, input) {
     const files = Array.from(input.files);
-    this.uploadedFiles[type] = files;
+    const processed = [];
+    
+    for (const f of files) {
+      const dataUri = await Utils.fileToDataUri(f);
+      processed.push({ name: f.name, size: f.size, type: f.type, dataUri });
+    }
+    
+    this.uploadedFiles[type] = processed;
     const previewId = type === 'id' ? 'id-upload-preview' : 'other-upload-preview';
     const preview = document.getElementById(previewId);
     if (!preview) return;
-    preview.innerHTML = files.map(f => `
+    preview.innerHTML = processed.map(f => `
       <div class="uploaded-file">
         <span class="uploaded-file-icon">${f.type.includes('pdf') ? '📄' : '🖼️'}</span>
         <span class="uploaded-file-name">${Utils.sanitize(f.name)}</span>
@@ -625,16 +701,19 @@ Pages.register = {
     // Save documents
     if (this.uploadedFiles.id) {
       this.uploadedFiles.id.forEach(f => {
-        DB.saveDocument({ memberId, filename: f.name, type: 'government_id', size: f.size });
+        DB.saveDocument({ memberId, filename: f.name, type: 'government_id', size: f.size, dataUri: f.dataUri });
       });
     }
     if (this.uploadedFiles.other) {
       this.uploadedFiles.other.forEach(f => {
-        DB.saveDocument({ memberId, filename: f.name, type: 'other', size: f.size });
+        DB.saveDocument({ memberId, filename: f.name, type: 'other', size: f.size, dataUri: f.dataUri });
       });
     }
 
     DB.addAuditLog(memberId, 'member', 'registration_submitted', null, { email: this.formData.email });
+    
+    // Send automated success email to member
+    Notifications.sendRegistrationSuccess(memberId);
 
     const admins = DB.getAdmins();
     const adminEmail = admins.length > 0 ? admins[0].email : 'admin@abeingo.org';

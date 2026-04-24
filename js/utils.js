@@ -310,6 +310,15 @@ const Utils = {
     document.body.removeChild(link);
   },
 
+  fileToDataUri(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(file);
+    });
+  },
+
   // Document Preview
   previewDocument(docId) {
     const docs = DB.getDocuments();
@@ -323,43 +332,57 @@ const Utils = {
     const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
     const isPDF = ext === 'pdf';
     
-    // Simulate secure URL
-    const simulatedUrl = doc.dataUri || 'data:text/plain;base64,U2ltdWxhdGVkIGRvY3VtZW50IGNvbnRlbnQ='; 
+    // Use real data URI if available, otherwise use a placeholder
+    const fileUrl = doc.dataUri || 'data:text/plain;base64,U2ltdWxhdGVkIGRvY3VtZW50IGNvbnRlbnQ='; 
     
     let previewHtml = '';
     if (isImage) {
-      previewHtml = `<img src="${simulatedUrl}" style="max-width:100%;max-height:65vh;object-fit:contain;display:block;margin:0 auto;border-radius:4px" alt="Preview"/>`;
+      previewHtml = `<img src="${fileUrl}" style="max-width:100%;max-height:70vh;object-fit:contain;display:block;margin:0 auto;border-radius:4px" alt="Preview"/>`;
     } else if (isPDF) {
-      previewHtml = `<iframe src="${simulatedUrl}" style="width:100%;height:65vh;border:none;background:white;border-radius:4px"></iframe>`;
+      previewHtml = `<iframe src="${fileUrl}" style="width:100%;height:70vh;border:none;background:white;border-radius:4px" title="PDF Preview"></iframe>`;
     } else {
       previewHtml = `
-        <div style="padding:3rem;text-align:center;background:var(--clr-surface-2);border-radius:var(--radius);width:100%;border:1px dashed rgba(255,255,255,0.2);">
-          <div style="font-size:4rem;margin-bottom:1rem;">📄</div>
-          <h3 style="margin-bottom:0.5rem;color:white">${this.sanitize(doc.filename)}</h3>
-          <p style="color:var(--clr-text-muted);margin-bottom:1.5rem;">Rich preview for .${ext} files is simulated.</p>
-          <a href="${simulatedUrl}" download="${doc.filename}" class="btn btn-primary" style="display:inline-flex">Download Original File</a>
+        <div style="padding:4rem 2rem;text-align:center;background:var(--clr-surface-2);border-radius:var(--radius);width:100%;border:2px dashed var(--clr-border);">
+          <div style="font-size:5rem;margin-bottom:1.5rem;">📄</div>
+          <h3 style="margin-bottom:0.75rem;color:var(--clr-text)">${this.sanitize(doc.filename)}</h3>
+          <p style="color:var(--clr-text-muted);margin-bottom:2rem;max-width:300px;margin-left:auto;margin-right:auto">Full preview for .${ext} files is not available in the browser. You can download the file to view it.</p>
+          <button class="btn btn-primary" onclick="Utils.downloadDocument('${doc.id}')">💾 Download Original File</button>
         </div>
       `;
     }
     
+    // Create a fresh overlay to support multiple modals
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
-    overlay.style.zIndex = '9999'; // ensure it's on top
+    overlay.id = 'preview-overlay';
+    overlay.style.zIndex = '10000'; // Higher than normal modals (1000)
+    overlay.style.background = 'rgba(0,0,0,0.85)';
+    overlay.style.backdropFilter = 'blur(8px)';
+    
     overlay.innerHTML = `
-      <div class="modal-box" style="width:800px;max-width:95vw">
-        <div class="modal-header">
-          <div class="modal-title">👁️ Document Preview: ${this.sanitize(doc.filename)}</div>
-          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
+      <div class="modal-box" style="width:900px;max-width:95vw;background:var(--clr-surface);box-shadow:0 25px 50px -12px rgba(0,0,0,0.5)">
+        <div class="modal-header" style="background:var(--clr-surface);border-bottom:1px solid var(--clr-border)">
+          <div class="modal-title" style="display:flex;align-items:center;gap:0.5rem">
+            <span style="font-size:1.2rem">${isImage ? '🖼️' : isPDF ? '📄' : '📎'}</span>
+            <span>Document Preview: ${this.sanitize(doc.filename)}</span>
+          </div>
+          <button class="modal-close" onclick="document.getElementById('preview-overlay').remove()">✕</button>
         </div>
-        <div class="modal-body" style="background:#111;padding:1rem;display:flex;align-items:center;justify-content:center;">
+        <div class="modal-body" style="background:#0f172a;padding:1.5rem;display:flex;align-items:center;justify-content:center;min-height:300px">
           ${previewHtml}
         </div>
-        <div class="modal-footer">
-          <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Close</button>
+        <div class="modal-footer" style="background:var(--clr-surface-2);border-top:1px solid var(--clr-border)">
+          <button class="btn btn-ghost" onclick="document.getElementById('preview-overlay').remove()">Close Preview</button>
           <button class="btn btn-primary" onclick="Utils.downloadDocument('${doc.id}')">💾 Download Original</button>
         </div>
       </div>
     `;
+
+    // Close on background click
+    overlay.onclick = (e) => {
+      if (e.target === overlay) overlay.remove();
+    };
+
     document.body.appendChild(overlay);
   },
 

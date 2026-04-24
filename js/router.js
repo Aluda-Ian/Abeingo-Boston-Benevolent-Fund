@@ -1,6 +1,8 @@
 /* ===========================
    ROUTER.js - Client-side routing
    =========================== */
+window.Pages = {};
+
 const Router = {
   currentPage: null,
   history: [],
@@ -14,20 +16,30 @@ const Router = {
     'update':       () => Pages.update.render(),
     // Admin routes
     'dashboard':    () => Pages.adminDashboard.render(),
-    'members':      () => Pages.adminMembers.render(),
+    'members':      (params) => Pages.adminMembers.render(params),
     'emails':       (params) => Pages.adminEmails.render(params?.type, params?.subject ? {subject: params.subject, body: params.body} : null),
     'contributions':() => Pages.adminContributions.render(),
     'reports':      () => Pages.adminReports.render(),
+    'tickets':      () => Pages.adminTickets.render(),
+    'messages':     () => Pages.adminMessages.render(),
+    'committees':   () => Pages.adminCommittees.render(),
+    'committee-forum': (params) => Pages.adminForum.render(params),
     'settings':     () => Pages.adminSettings.render(),
     // Member portal
     'portal':       () => Pages.memberPortal.render(),
+    'reset-password':() => Pages.resetPassword.render(),
   },
 
   navigate(page, params = {}) {
+    // Prevent redundant navigation to the same page/params
+    if (this.currentPage === page && JSON.stringify(this.currentParams) === JSON.stringify(params)) {
+      return;
+    }
+
     if (this.currentPage) this.history.push(this.currentPage);
 
     // Auth guards
-    const adminPages = ['dashboard', 'members', 'emails', 'contributions', 'reports', 'settings'];
+    const adminPages = ['dashboard', 'members', 'emails', 'contributions', 'reports', 'settings', 'tickets', 'messages', 'committees', 'committee-forum'];
     const memberPages = ['portal'];
 
     if (adminPages.includes(page) && !Auth.isAdmin()) {
@@ -35,6 +47,13 @@ const Router = {
     }
     if (memberPages.includes(page) && !Auth.isMember()) {
       return this.navigate('member-login');
+    }
+
+    // Always ensure preloader is removed when navigating
+    const preloader = document.getElementById('loading-screen');
+    if (preloader) {
+      preloader.classList.add('fade-out');
+      setTimeout(() => preloader.remove(), 600);
     }
 
     this.currentPage = page;
@@ -59,6 +78,12 @@ const Router = {
     window.history.pushState({ page, params }, '', url.toString());
   },
 
+  refresh() {
+    if (!this.currentPage) return;
+    const renderer = this.routes[this.currentPage];
+    if (renderer) renderer(this.currentParams);
+  },
+
   back() {
     if (this.history.length) {
       this.navigate(this.history.pop());
@@ -66,6 +91,8 @@ const Router = {
   },
 
   init() {
+    if (this.started) return;
+    this.started = true;
     // Handle browser back/forward
     window.addEventListener('popstate', (e) => {
       if (e.state && e.state.page) {

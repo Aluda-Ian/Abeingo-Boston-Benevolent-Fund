@@ -7,7 +7,12 @@ const DB = {
 
   async init() {
     try {
-      const res = await fetch('http://localhost:3000/api/db');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout
+
+      const res = await fetch('http://localhost:3500/api/db', { signal: controller.signal });
+      clearTimeout(timeoutId);
+
       if (res.ok) {
         this._state = await res.json();
         
@@ -21,11 +26,15 @@ const DB = {
             }
           });
           if (migrated) {
-            await fetch('http://localhost:3000/api/db', {
+            const postController = new AbortController();
+            const postTimeoutId = setTimeout(() => postController.abort(), 2000);
+            await fetch('http://localhost:3500/api/db', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(this._state)
-            });
+              body: JSON.stringify(this._state),
+              signal: postController.signal
+            }).catch(e => console.error("Initial sync failed", e));
+            clearTimeout(postTimeoutId);
           }
         }
       } else {
@@ -50,6 +59,12 @@ const DB = {
     settings: 'abbf_settings',
     memberSignatures: 'abbf_member_signatures',
     emailTemplates: 'abbf_email_templates',
+    notifications: 'abbf_notifications',
+    tickets: 'abbf_tickets',
+    messages: 'abbf_messages',
+    committees: 'abbf_committees',
+    forumTopics: 'abbf_forum_topics',
+    forumReplies: 'abbf_forum_replies',
   },
 
   get(key) {
@@ -69,7 +84,7 @@ const DB = {
   set(key, value) {
     if (this._state) {
       this._state[key] = value;
-      fetch('http://localhost:3000/api/db', {
+      fetch('http://localhost:3500/api/db', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(this._state)
@@ -190,6 +205,34 @@ const DB = {
       t.usedAt = new Date().toISOString();
       this.set(this.KEYS.tokens, tokens);
     }
+  },
+
+  generateOTP(memberId, email) {
+    const tokens = this.get(this.KEYS.tokens);
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const token = {
+      id: this.newGenId('OTP'),
+      type: 'otp',
+      memberId,
+      email,
+      otp,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 mins
+      used: false
+    };
+    tokens.push(token);
+    this.set(this.KEYS.tokens, tokens);
+    return otp;
+  },
+
+  verifyOTP(email, otp) {
+    const tokens = this.get(this.KEYS.tokens);
+    const index = tokens.findIndex(t => t.type === 'otp' && t.email === email && t.otp === otp && !t.used && new Date(t.expiresAt) > new Date());
+    if (index >= 0) {
+      tokens[index].used = true;
+      this.set(this.KEYS.tokens, tokens);
+      return true;
+    }
+    return false;
   },
 
   // ============ Contributions ============
@@ -400,19 +443,25 @@ const DB = {
         { id: 'tpl_reminder', name: 'Semi-annual Reminder', subject: 'Abeingo BBF — Semi-annual Update', body: 'Dear {member_name},\n\nThis is a gentle reminder to verify your profile information for this semi-annual period.\n\nThank you,\n{admin_name}', isDefault: true },
         { id: 'tpl_death', name: 'Notice of Bereavement', subject: 'Abeingo BBF — Notice of Bereavement', body: 'Dear {member_name},\n\nWe regret to inform you of the passing of [Name].\n\nPlease keep the family in your thoughts.\n\nSincerely,\n{admin_name}', isDefault: true },
         { id: 'tpl_reg_link', name: 'Registration Link', subject: 'Your Registration Link - Abeingo BBF', body: 'Dear {member_name},\n\nYou have been invited to join the Abeingo Boston Benevolent Fund.\n\nPlease click the link below to complete your registration:\n<a href="{link}">{link}</a>\n\nThis link will expire in {expiry} hours.\n\nSincerely,\n{admin_name}', isDefault: true },
-        { id: 'tpl_update_link', name: 'Profile Update Link', subject: 'Update Your Profile - Abeingo BBF', body: 'Dear {member_name},\n\nPlease click the link below to update your member profile and beneficiaries:\n<a href="{link}">{link}</a>\n\nThis link will expire in {expiry} hours.\n\nSincerely,\n{admin_name}', isDefault: true }
+        { id: 'tpl_update_link', name: 'Profile Update Link', subject: 'Update Your Profile - Abeingo BBF', body: 'Dear {member_name},\n\nPlease click the link below to update your member profile and beneficiaries:\n<a href="{link}">{link}</a>\n\nThis link will expire in {expiry} hours.\n\nSincerely,\n{admin_name}', isDefault: true },
+        { id: 'tpl_reg_success', name: 'Registration Success', subject: 'Registration Received - Abeingo BBF', body: 'Dear {member_name},\n\nThank you for completing your registration with the Abeingo Boston Benevolent Fund. Your application is now being reviewed by the committee.\n\nYou will receive another email once your membership is approved.\n\nSincerely,\n{admin_name}', isDefault: true },
+        { id: 'tpl_approval', name: 'Membership Approved', subject: 'Welcome to Abeingo BBF - Membership Approved', body: 'Dear {member_name},\n\nCongratulations! Your membership application has been officially approved. Your Member ID is <strong>{member_id}</strong>.\n\nYou can now access the member portal to view your history and balance.\n\nWelcome to the family!\n\nSincerely,\n{admin_name}', isDefault: true },
+        { id: 'tpl_payment', name: 'Payment Receipt', subject: 'Payment Received - Abeingo BBF', body: 'Dear {member_name},\n\nThis is to confirm that we have received your payment of <strong>{amount}</strong> on {date}.\n\nYour current Kitty Balance is now <strong>{balance}</strong>.\n\nThank you for your continued support.\n\nSincerely,\n{admin_name}', isDefault: true }
       ];
       this.set(this.KEYS.emailTemplates, templates);
     } else {
       let needsSave = false;
-      if (!templates.find(t => t.id === 'tpl_reg_link')) {
-        templates.push({ id: 'tpl_reg_link', name: 'Registration Link', subject: 'Your Registration Link - Abeingo BBF', body: 'Dear {member_name},\n\nYou have been invited to join the Abeingo Boston Benevolent Fund.\n\nPlease click the link below to complete your registration:\n<a href="{link}">{link}</a>\n\nThis link will expire in {expiry} hours.\n\nSincerely,\n{admin_name}', isDefault: true });
-        needsSave = true;
-      }
-      if (!templates.find(t => t.id === 'tpl_update_link')) {
-        templates.push({ id: 'tpl_update_link', name: 'Profile Update Link', subject: 'Update Your Profile - Abeingo BBF', body: 'Dear {member_name},\n\nPlease click the link below to update your member profile and beneficiaries:\n<a href="{link}">{link}</a>\n\nThis link will expire in {expiry} hours.\n\nSincerely,\n{admin_name}', isDefault: true });
-        needsSave = true;
-      }
+      const defaults = [
+        { id: 'tpl_reg_success', name: 'Registration Success', subject: 'Registration Received - Abeingo BBF', body: 'Dear {member_name},\n\nThank you for completing your registration with the Abeingo Boston Benevolent Fund. Your application is now being reviewed by the committee.\n\nYou will receive another email once your membership is approved.\n\nSincerely,\n{admin_name}', isDefault: true },
+        { id: 'tpl_approval', name: 'Membership Approved', subject: 'Welcome to Abeingo BBF - Membership Approved', body: 'Dear {member_name},\n\nCongratulations! Your membership application has been officially approved. Your Member ID is <strong>{member_id}</strong>.\n\nYou can now access the member portal to view your history and balance.\n\nWelcome to the family!\n\nSincerely,\n{admin_name}', isDefault: true },
+        { id: 'tpl_payment', name: 'Payment Receipt', subject: 'Payment Received - Abeingo BBF', body: 'Dear {member_name},\n\nThis is to confirm that we have received your payment of <strong>{amount}</strong> on {date}.\n\nYour current Kitty Balance is now <strong>{balance}</strong>.\n\nThank you for your continued support.\n\nSincerely,\n{admin_name}', isDefault: true }
+      ];
+      defaults.forEach(d => {
+        if (!templates.find(t => t.id === d.id)) {
+          templates.push(d);
+          needsSave = true;
+        }
+      });
       if (needsSave) this.set(this.KEYS.emailTemplates, templates);
     }
     return templates;
@@ -442,6 +491,45 @@ const DB = {
 
   saveSettings(settings) {
     this.set(this.KEYS.settings, settings);
+  },
+
+  // ============ Notifications ============
+  getNotifications() { return this.get(this.KEYS.notifications); },
+  
+  addNotification(n) {
+    const notifs = this.getNotifications();
+    notifs.push({ id: this.newGenId('NOT'), timestamp: new Date().toISOString(), read: false, ...n });
+    this.set(this.KEYS.notifications, notifs);
+  },
+
+  markNotificationRead(id) {
+    const notifs = this.getNotifications();
+    const n = notifs.find(x => x.id === id);
+    if (n) n.read = true;
+    this.set(this.KEYS.notifications, notifs);
+  },
+
+  // ============ Tickets ============
+  getTickets() { return this.get(this.KEYS.tickets); },
+  
+  saveTicket(ticket) {
+    const tickets = this.getTickets();
+    const i = tickets.findIndex(t => t.id === ticket.id);
+    if (i >= 0) {
+      tickets[i] = { ...tickets[i], ...ticket, updatedAt: new Date().toISOString() };
+    } else {
+      tickets.push({ id: this.newGenId('TCK'), status: 'open', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), replies: [], ...ticket });
+    }
+    this.set(this.KEYS.tickets, tickets);
+  },
+
+  // ============ Messages ============
+  getMessages() { return this.get(this.KEYS.messages); },
+
+  saveMessage(msg) {
+    const msgs = this.getMessages();
+    msgs.push({ id: this.newGenId('MSG'), timestamp: new Date().toISOString(), ...msg });
+    this.set(this.KEYS.messages, msgs);
   },
 
   getDefaultSettings() {
@@ -619,6 +707,49 @@ const DB = {
       ];
       sampleMembers.forEach(m => this.saveMember(m));
     }
+  },
+
+  // ============ Committees ============
+  getCommittees() { return this.get(this.KEYS.committees); },
+  
+  saveCommittee(committee) {
+    const committees = this.getCommittees();
+    const i = committees.findIndex(c => c.id === committee.id);
+    if (i >= 0) {
+      committees[i] = { ...committees[i], ...committee, updatedAt: new Date().toISOString() };
+    } else {
+      committees.push({ id: this.newGenId('CMT'), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), ...committee });
+    }
+    this.set(this.KEYS.committees, committees);
+  },
+
+  getCommittee(id) {
+    return this.getCommittees().find(c => c.id === id);
+  },
+
+  // ============ Forum ============
+  getForumTopics() { return this.get(this.KEYS.forumTopics); },
+  
+  saveForumTopic(topic) {
+    const topics = this.getForumTopics();
+    const i = topics.findIndex(t => t.id === topic.id);
+    if (i >= 0) {
+      topics[i] = { ...topics[i], ...topic, updatedAt: new Date().toISOString() };
+    } else {
+      topics.push({ id: this.newGenId('TOP'), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), ...topic });
+    }
+    this.set(this.KEYS.forumTopics, topics);
+  },
+
+  getForumReplies(topicId = null) {
+    const all = this.get(this.KEYS.forumReplies);
+    return topicId ? all.filter(r => r.topicId === topicId) : all;
+  },
+
+  saveForumReply(reply) {
+    const replies = this.get(this.KEYS.forumReplies);
+    replies.push({ id: this.newGenId('REPLY'), createdAt: new Date().toISOString(), ...reply });
+    this.set(this.KEYS.forumReplies, replies);
   },
 
   importData(type, items, overwrite = false) {
