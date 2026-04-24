@@ -162,8 +162,11 @@ const Utils = {
   // Get URL params
   getUrlParams() {
     const params = {};
-    const search = window.location.search.substring(1);
-    search.split('&').forEach(pair => {
+    const hash = window.location.hash.substring(1);
+    const searchPart = hash.includes('?') ? hash.split('?')[1] : window.location.search.substring(1);
+    if (!searchPart) return params;
+    
+    searchPart.split('&').forEach(pair => {
       const [k, v] = pair.split('=');
       if (k) params[decodeURIComponent(k)] = decodeURIComponent(v || '');
     });

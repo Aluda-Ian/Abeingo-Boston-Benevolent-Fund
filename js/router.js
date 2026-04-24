@@ -69,13 +69,11 @@ const Router = {
       root.innerHTML = '<div style="text-align:center;padding:4rem"><h2>Page not found</h2></div>';
     }
 
-    // Update URL without reload
-    const url = new URL(window.location.href);
-    url.searchParams.set('page', page);
-    if (Object.keys(params).length) {
-      Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+    // Update URL hash without reload
+    const hash = `#${page}` + (Object.keys(params).length > 0 ? `?${new URLSearchParams(params).toString()}` : '');
+    if (window.location.hash !== hash) {
+      window.history.pushState({ page, params }, '', hash);
     }
-    window.history.pushState({ page, params }, '', url.toString());
   },
 
   refresh() {
@@ -95,22 +93,40 @@ const Router = {
     this.started = true;
     // Handle browser back/forward
     window.addEventListener('popstate', (e) => {
-      if (e.state && e.state.page) {
-        this.navigate(e.state.page, e.state.params || {});
-      }
+      this.handleHashChange();
     });
 
-    // Detect initial route from URL params
-    const params = Utils.getUrlParams();
-    if (params.page) {
-      this.navigate(params.page, params);
-    } else if (Auth.isAdmin()) {
-      this.navigate('dashboard');
-    } else if (Auth.isMember()) {
-      this.navigate('portal');
-    } else {
-      this.navigate('landing');
+    window.addEventListener('hashchange', () => {
+      this.handleHashChange();
+    });
+
+    // Handle initial route
+    this.handleHashChange();
+  },
+
+  handleHashChange() {
+    const hash = window.location.hash.substring(1); // Remove #
+    if (!hash) {
+      if (Auth.isAdmin()) {
+        this.navigate('dashboard');
+      } else if (Auth.isMember()) {
+        this.navigate('portal');
+      } else {
+        this.navigate('landing');
+      }
+      return;
     }
+
+    const [page, search] = hash.split('?');
+    const params = {};
+    if (search) {
+      search.split('&').forEach(pair => {
+        const [k, v] = pair.split('=');
+        if (k) params[decodeURIComponent(k)] = decodeURIComponent(v || '');
+      });
+    }
+    
+    this.navigate(page, params);
   }
 };
 
