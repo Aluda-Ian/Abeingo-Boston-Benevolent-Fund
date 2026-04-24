@@ -105,8 +105,21 @@ const Router = {
   },
 
   handleHashChange() {
-    const hash = window.location.hash.substring(1); // Remove #
+    let hash = window.location.hash.substring(1); // Remove #
+    let params = {};
+    let page = '';
+
     if (!hash) {
+      // Fallback to URL search params for legacy links
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.has('page')) {
+        page = searchParams.get('page');
+        searchParams.forEach((v, k) => { if (k !== 'page') params[k] = v; });
+        // Migrate to hash immediately to avoid issues
+        this.navigate(page, params);
+        return;
+      }
+
       if (Auth.isAdmin()) {
         this.navigate('dashboard');
       } else if (Auth.isMember()) {
@@ -117,8 +130,8 @@ const Router = {
       return;
     }
 
-    const [page, search] = hash.split('?');
-    const params = {};
+    const [hashPage, search] = hash.split('?');
+    page = hashPage;
     if (search) {
       search.split('&').forEach(pair => {
         const [k, v] = pair.split('=');

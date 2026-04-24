@@ -19,9 +19,14 @@ window.App = {
       
       this.initialized = true;
       clearTimeout(safetyTimer);
+      
+      // Start router first so page content is ready
+      Router.init();
+      // Then fade out the preloader
       this.hideLoading();
     } catch (err) {
       console.error('App init failed:', err);
+      Router.init();
       this.hideLoading();
     }
   },
@@ -35,11 +40,7 @@ window.App = {
       loading.classList.add('fade-out');
       setTimeout(() => {
         if (loading.parentNode) loading.remove();
-        // Start routing only after loading screen starts fading
-        Router.init();
       }, 600);
-    } else {
-      Router.init();
     }
   },
 

@@ -10,7 +10,7 @@ Pages.adminForum = {
     const committee = DB.getCommittee(committeeId);
     
     if (!committee) {
-      Router.navigate('admin-committees');
+      Router.navigate('committees');
       return;
     }
 

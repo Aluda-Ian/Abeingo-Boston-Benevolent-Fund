@@ -290,17 +290,17 @@ const DB = {
   saveDeathEvent(event) {
     const events = this.getDeathEvents();
     const i = events.findIndex(e => e.id === event.id);
+    let finalEvent = event;
     if (i >= 0) {
       events[i] = { ...events[i], ...event, updatedAt: new Date().toISOString() };
     } else {
-      const e = { id: this.newGenId('DTH'), ...event, createdAt: new Date().toISOString() };
-      events.push(e);
+      finalEvent = { id: this.newGenId('DTH'), ...event, createdAt: new Date().toISOString() };
+      events.push(finalEvent);
       // Auto-create contribution records for all active members
-      this.createContributionsForDeath(e);
-      return e;
+      this.createContributionsForDeath(finalEvent);
     }
     this.set(this.KEYS.deathEvents, events);
-    return event;
+    return finalEvent;
   },
 
   createContributionsForDeath(deathEvent) {
@@ -412,7 +412,7 @@ const DB = {
           throw new Error('SMTP is not fully configured in the Settings page.');
         }
 
-        const response = await fetch('http://localhost:3000/api/send-bulk', {
+        const response = await fetch('http://localhost:3500/api/send-bulk', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notifications, smtpSettings: settings })
