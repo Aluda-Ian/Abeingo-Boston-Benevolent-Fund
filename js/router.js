@@ -15,6 +15,7 @@ const Router = {
     // Admin routes
     'dashboard':    () => Pages.adminDashboard.render(),
     'members':      () => Pages.adminMembers.render(),
+    'emails':       (params) => Pages.adminEmails.render(params?.type, params?.subject ? {subject: params.subject, body: params.body} : null),
     'contributions':() => Pages.adminContributions.render(),
     'reports':      () => Pages.adminReports.render(),
     'settings':     () => Pages.adminSettings.render(),
@@ -26,7 +27,7 @@ const Router = {
     if (this.currentPage) this.history.push(this.currentPage);
 
     // Auth guards
-    const adminPages = ['dashboard', 'members', 'contributions', 'reports', 'settings'];
+    const adminPages = ['dashboard', 'members', 'emails', 'contributions', 'reports', 'settings'];
     const memberPages = ['portal'];
 
     if (adminPages.includes(page) && !Auth.isAdmin()) {
@@ -44,7 +45,7 @@ const Router = {
 
     const renderer = this.routes[page];
     if (renderer) {
-      renderer();
+      renderer(this.currentParams);
     } else {
       root.innerHTML = '<div style="text-align:center;padding:4rem"><h2>Page not found</h2></div>';
     }

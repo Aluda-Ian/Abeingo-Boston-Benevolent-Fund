@@ -1,0 +1,348 @@
+﻿Abeingo Boston Benevolent Fund — Build Specification
+	Confidential | April 2026
+	
+
+
+
+ABEINGO BOSTON BENEVOLENT FUND
+System Build Specification
+Registration Link System · Bulk Email Customisation · Document Preview & Download
+	
+
+Version
+V1.0.0
+	Date
+April 2026
+	Prepared For
+Super Admin / Dev Team
+	
+
+1. Overview
+This document defines the detailed build specification for three critical features of the Abeingo Boston Benevolent Fund (BBF) member management system. These features address the full lifecycle of member onboarding, communication, and document management.
+
+
+Feature
+	Description
+	Feature 1
+	Admin-Generated Registration Link System
+	Feature 2
+	Customisable Bulk Email Templates
+	Feature 3
+	Document Preview & Multi-Format Download
+	
+
+2
+	Registration Link System
+Admin-triggered, auto-generated, email-delivered onboarding link
+	
+
+2.1 Overview & Intent
+The super admin does not manually craft registration links. Instead, the system automatically generates a unique, time-limited registration URL when the admin clicks a single button. The admin only needs to know the applicant's email address. The system does the rest.
+
+
+Key Principle
+One click → system generates link → system emails applicant. Admin never copies or shares a URL manually.
+	
+
+2.2 End-to-End Flow
+
+
+01
+Admin enters email
+In Members section
+	→
+	02
+Click 'Send Reg Link'
+Single button action
+	→
+	03
+System generates URL
+Unique token, 30-day TTL
+	→
+	04
+Email dispatched
+To applicant inbox
+	→
+	05
+Applicant registers
+Via link in email
+	→
+	06
+Admin notified
+New pending application
+	
+
+2.3 Admin UI — Send Registration Link
+2.3.1 Where it lives
+Located in the Members module, accessible from the main navigation. A dedicated 'Send Registration Link' button is visible at the top of the Members list page (alongside Bulk Export and Bulk Send).
+2.3.2 Admin interaction steps
+1. Admin clicks the 'Send Registration Link' button.
+2. A modal dialog opens with a single input field: Applicant Email Address.
+3. Admin enters the email and clicks 'Generate & Send'.
+4. The system validates the email format and checks if it does not already exist in the member database.
+5. If valid: system generates the link and sends the email. Modal shows a success confirmation.
+6. If email already exists: system shows an inline error — 'This email is already registered.'
+7. If email is invalid format: inline error — 'Please enter a valid email address.'
+
+
+Validation Rule
+The system must check for duplicate emails before generating a link. Two active registration links cannot exist for the same email address simultaneously.
+	
+
+2.4 System-Generated Registration Link
+2.4.1 Link structure
+Each link is a unique URL containing a secure token. Format:
+
+
+https://[domain]/register?token=a7f3c2...&exp=1748000000
+	
+
+2.4.2 Token properties
+Property
+	Specification
+	Generation method
+	Cryptographically secure random token (UUID v4 or equivalent)
+	Length
+	Minimum 32 characters
+	Expiry
+	30 days from time of generation
+	Single-use
+	Link becomes invalid after the applicant completes and submits the registration form
+	Re-sendable
+	Admin can generate a new link for the same email if the previous one expired
+	Storage
+	Token stored in database with: email, generated_at, expires_at, used (boolean), status
+	
+
+2.5 Registration Email — Automated Template
+The email sent to the applicant is system-generated from a default template. The admin does not edit this email — it is automated. (Bulk Send emails, covered in Section 3, are the editable communications.)
+
+
+Subject: Your Abeingo BBF Membership Application Link
+Dear Applicant,
+You have been invited to apply for membership with the Abeingo Boston Benevolent Fund. Please click the button below to complete your registration.
+[ COMPLETE REGISTRATION ]
+This link expires in 30 days. If you did not request this, please disregard this email.
+Abeingo Boston Benevolent Fund
+	
+
+Admin Notification
+Immediately after the applicant submits their completed registration, the system sends an automated email to the super admin: 'New application received from [Applicant Name]. Please review in Pending Approvals.'
+	
+
+2.6 Registration Form — Member-Facing Requirements
+* Show/hide password toggle on the password field.
+   * Display advisory text: 'Please note your password somewhere safe — you will need it to log in.'
+* A beneficiary field must allow any person (not restricted to family members).
+* Documentation upload section supports multiple files (see Section 4 for supported formats).
+   * Display: 'Your documents are securely stored in compliance with United States data protection regulations.'
+* After submission, the applicant sees a confirmation screen: 'Your application has been submitted. Our team will review and be in touch.'
+
+
+________________
+
+
+3
+	Customisable Bulk Email Templates
+Admin can edit email content before dispatching any bulk send
+	
+
+3.1  Overview
+All bulk send emails — including death record notifications, semiannual reminders, and general announcements — must be editable by the admin before dispatch. The system provides a default template for each email type. The admin can modify the subject line and body before sending.
+
+
+Scope
+This applies to all bulk email types: general announcements, semiannual reminders, death record broadcasts, and any future email types added by admin.
+	
+
+3.2  Bulk Send — Admin Workflow
+8. Admin navigates to Bulk Send in the dashboard.
+9. Selects email type from a dropdown: General Announcement / Semiannual Reminder / Death Record Notification / Custom.
+10. The system loads the default template for that type into an editable form.
+11. Admin edits the Subject line (pre-filled, editable).
+12. Admin edits the Body text using a basic rich-text editor (bold, italic, paragraph breaks).
+13. The preview panel on the right shows a live render of how the email will appear to recipients.
+14. Admin selects recipient group: All Members / Active Members / Members in Grace Period / Custom selection.
+15. Admin clicks 'Send Now' or 'Schedule Send' (optional scheduling for a future date/time).
+16. Confirmation dialog: 'You are about to send this email to [N] members. Confirm?'
+17. On confirm: email dispatched. Admin sees success messages with count of recipients.
+
+
+3.3  Template Types & Default Content
+Template Type
+	Default Content
+	General Announcement
+	Subject: 'Important Update from Abeingo BBF' Body: Admin writes freely.
+	Semi-annual Reminder
+	Subject: 'Abeingo BBF — Semi-annual Update' Body: Pre-filled with standard reminder text. Admin edits as needed.
+	Death Record Notification
+	Subject: 'Abeingo BBF — Notice of Bereavement' Body: Pre-filled with formal notification text including placeholders for name and date. Admin completes before send.
+	Custom
+	Subject: blank — admin writes from scratch. Body: blank — admin writes freely.
+	
+
+3.4  Rich-Text Editor Requirements
+* Bold and italic formatting.
+* Paragraph spacing (Enter key creates new paragraph).
+* Variable placeholders supported: {member name}, {date}, {admin_name}.
+* Character count visible below editor.
+* No images or attachments in bulk email body (keep emails lightweight).
+* 'Reset to default' button restores the original template for that type.
+
+
+3.5 Death Record Broadcast — Special Rules
+When the super admin approves a member-submitted death event, the system pre-populates the Death Record Notification template with the deceased member's name and the reported date. The admin reviews, edits if needed, and explicitly sends. The system never auto-sends a death notification without admin review and approval.
+
+
+Important
+Death notifications are never sent automatically. Admin must manually trigger the send after reviewing the pre-populated email.
+	
+
+________________
+
+
+4
+	Document Preview & Multi-Format Download
+In-browser preview for all file types with PDF/Excel export
+	
+
+4.1 Overview
+All documents in the system — member-uploaded files, reports, and system-generated exports — follow a preview-first approach. No file auto-downloads. The member or admin opens a preview, then chooses to download if needed. This applies to the Member Profile portal and all admin-facing document areas.
+
+
+4.2 Supported File Formats
+The system must support preview and download for the following file types:
+
+
+File Type
+	Preview Behaviour
+	PDF (.pdf)
+	Inline PDF viewer (embedded browser PDF viewer). Full page navigation, zoom.
+	Images (.jpg, .jpeg, .png, .gif, .webp, .bmp)
+	Full-size image preview in a lightbox viewer. Pan and zoom controls.
+	Word Documents (.doc, .docx)
+	Rendered as read-only HTML preview (convert server-side via LibreOffice). Download original file.
+	Excel / Spreadsheets (.xls, .xlsx, .csv)
+	Rendered as a scrollable table preview. Download as original or export as PDF.
+	Text files (.txt, .rtf)
+	Plain text preview in a monospace viewer.
+	Scanned documents (multi-page TIFF, .tif)
+	Page-by-page image preview.
+	
+
+4.3 Member Profile — Documents Section
+4.3.1 What members see
+* A Documents tab in their profile portal.
+* A card for each uploaded document showing: filename, file type icon, upload date, file size.
+* A 'Preview' button on each card — opens the in-browser viewer.
+* A 'Download' button on each card — triggers download in original format.
+* Option to 'Export as PDF' where applicable (Word docs, Excel files).
+
+
+4.3.2 Preview viewer behaviour
+18. Members click 'Preview' on a document card.
+19. A full-screen overlay opens with the document rendered inside.
+20. Navigation controls shown: Close (×), Download original, Export as PDF (if applicable), page navigation for multi-page documents.
+21. For images: zoom in / zoom out / fit to screen controls.
+22. For PDFs: page count shown ('Page 2 of 8'), scroll navigation.
+23. Viewer closes on clicking × or pressing Escape.
+
+
+Security Note
+Document previews are served via authenticated, time-limited signed URLs. Documents cannot be accessed directly via URL without a valid session. This is consistent with US data protection requirements.
+	
+
+4.4 Admin-Facing Document Areas
+The same preview-first rule applies to admin views:
+* Pending Approval: admin previews all applicant documents before approving or rejecting.
+* Reports: all generated reports open in preview. Admin downloads PDF or Excel from the preview.
+* Death event records: attached documents viewable in preview before admin approves the event.
+* Member profiles (admin view): all member documents previewable inline.
+
+
+4.5 Export / Download Options
+Export Type
+	Behaviour
+	Download original
+	Returns the file in its original uploaded format (PDF, DOCX, XLSX, etc.)
+	Export as PDF
+	Server-side conversion to PDF. Available for DOCX, XLSX, CSV, TXT, RTF.
+	Export as Excel
+	Available for report data and CSV files. Exports as .xlsx with formatted headers.
+	Bulk export
+	Admin can select multiple documents/reports and download as a ZIP archive.
+	
+
+________________
+
+
+5. Feature Summary & Build Checklist
+
+
+Ref
+	Requirement
+	REG-01
+	Admin can enter applicant email and click 'Send Registration Link' from Members module
+	REG-02
+	System auto-generates unique 32-char secure token with 30-day expiry
+	REG-03
+	System emails applicant automatically with registration link — admin does not copy/share URL
+	REG-04
+	Duplicate email check before link generation
+	REG-05
+	Single-use link — invalidated after submission
+	REG-06
+	Re-send supported if previous link expired
+	REG-07
+	Admin receives email notification on new application submission
+	REG-08
+	Registration form has show/hide password toggle with note
+	REG-09
+	Beneficiary field accepts non-family members
+	REG-10
+	Multiple document upload on registration form
+	REG-11
+	US data protection assurance message on documentation upload
+	EMAIL-01
+	All bulk send email types have editable subject + body before dispatch
+	EMAIL-02
+	Default template pre-loaded per email type; 'Reset to default' available
+	EMAIL-03
+	Live preview panel shows email render during editing
+	EMAIL-04
+	Variable placeholders: {member_name}, {date}, {admin_name}
+	EMAIL-05
+	Death record notification pre-populated from approved event — admin must manually send
+	EMAIL-06
+	Optional schedule-send (future date/time)
+	DOC-01
+	Preview-first: all documents open in viewer before download
+	DOC-02
+	PDF inline viewer with page navigation and zoom
+	DOC-03
+	Image lightbox viewer with pan and zoom for JPG, PNG, GIF, WEBP, BMP
+	DOC-04
+	Word doc server-side render to HTML for preview
+	DOC-05
+	Excel/CSV rendered as scrollable table for preview
+	DOC-06
+	TIFF page-by-page preview
+	DOC-07
+	Download original file available on all documents
+	DOC-08
+	Export as PDF for DOCX, XLSX, CSV, TXT, RTF
+	DOC-09
+	Export as Excel for reports and CSV
+	DOC-10
+	Bulk export as ZIP for multiple documents
+	DOC-11
+	Signed, authenticated URLs for document access — no direct URL access without session
+	DOC-12
+	Admin pending approval shows all documents in preview before approve/reject
+	
+
+End of Document
+We will review these and adjust whenever there is need to do so.
+
+The current MVP: https://cosmic-cranachan-88c191.netlify.app/?page=dashboard#
+Abeingo BBF System Build Spec        Page

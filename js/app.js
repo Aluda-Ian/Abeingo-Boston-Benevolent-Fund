@@ -2,7 +2,10 @@
    APP.js - Application Entry Point
    =========================== */
 window.App = {
-  init() {
+  async init() {
+    // Wait for server DB connection and load data
+    await DB.init();
+
     // Seed initial data
     DB.seedIfEmpty();
 

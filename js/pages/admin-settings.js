@@ -67,9 +67,9 @@ Pages.adminSettings = {
         </div>
       </div>
 
-      <!-- Notification Settings -->
+      <!-- Email Settings -->
       <div class="settings-section">
-        <div class="settings-section-header">📧 Notification Settings</div>
+        <div class="settings-section-header">📧 Email Settings</div>
         <div class="settings-section-body">
           <div class="settings-row">
             <div class="settings-row-left">
@@ -81,25 +81,10 @@ Pages.adminSettings = {
               <div class="toggle-slider"></div>
             </label>
           </div>
-          <div class="settings-row">
-            <div class="settings-row-left">
-              <div class="settings-row-label">WhatsApp Notifications</div>
-              <div class="settings-row-desc">Send notifications via WhatsApp (requires API key)</div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="set-whatsapp-enabled" ${settings.whatsappEnabled?'checked':''}/>
-              <div class="toggle-slider"></div>
-            </label>
-          </div>
-
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem">
             <div class="form-field">
               <label class="field-label">Admin Email</label>
               <input type="email" id="set-admin-email" class="field-input" value="${Utils.sanitize(settings.adminEmail)}" placeholder="admin@abeingo.org"/>
-            </div>
-            <div class="form-field">
-              <label class="field-label">Admin WhatsApp Number</label>
-              <input type="text" id="set-admin-phone" class="field-input" value="${Utils.sanitize(settings.adminPhone)}" placeholder="+1-617-555-0000"/>
             </div>
             <div class="form-field">
               <label class="field-label">SMTP Host</label>
@@ -117,9 +102,63 @@ Pages.adminSettings = {
               <label class="field-label">SMTP Password</label>
               <input type="password" id="set-smtp-pass" class="field-input" value="${Utils.sanitize(settings.smtpPass)}" placeholder="••••••••"/>
             </div>
+            <div class="form-field" style="display:flex;align-items:flex-end">
+              <button class="btn btn-outline" style="width:100%" onclick="Pages.adminSettings.testSmtpConnection()">🔌 Test SMTP Connection</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Email Branding -->
+      <div class="settings-section">
+        <div class="settings-section-header">🎨 Email Branding</div>
+        <div class="settings-section-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+            <div class="form-field">
+              <label class="field-label">Header Logo URL</label>
+              <input type="text" id="set-email-logo" class="field-input" value="${Utils.sanitize(settings.emailLogoUrl || '')}" placeholder="https://example.com/logo.png"/>
+            </div>
+            <div class="form-field">
+              <label class="field-label">Brand Primary Color</label>
+              <div style="display:flex;gap:0.5rem;align-items:center">
+                <input type="color" id="set-email-color" style="width:40px;height:40px;padding:0;border:none;cursor:pointer;background:transparent" value="${settings.emailBrandColor || '#0f3a63'}"/>
+                <span style="font-size:0.8rem;color:var(--clr-text-muted)">Used for email headers</span>
+              </div>
+            </div>
+            <div class="form-field" style="grid-column: span 2">
+              <label class="field-label">Header Title Text</label>
+              <input type="text" id="set-email-header" class="field-input" value="${Utils.sanitize(settings.emailHeader || settings.orgName || '')}" placeholder="Abeingo Boston Benevolent Fund"/>
+            </div>
+            <div class="form-field" style="grid-column: span 2">
+              <label class="field-label">Footer Text / Disclaimer</label>
+              <textarea id="set-email-footer" class="field-input" rows="3" placeholder="You are receiving this email because...">${Utils.sanitize(settings.emailFooter || '')}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WhatsApp Settings -->
+      <div class="settings-section">
+        <div class="settings-section-header">📱 WhatsApp Settings</div>
+        <div class="settings-section-body">
+          <div class="settings-row">
+            <div class="settings-row-left">
+              <div class="settings-row-label">WhatsApp Notifications</div>
+              <div class="settings-row-desc">Send notifications via WhatsApp (requires API key)</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="set-whatsapp-enabled" ${settings.whatsappEnabled?'checked':''}/>
+              <div class="toggle-slider"></div>
+            </label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem">
+            <div class="form-field">
+              <label class="field-label">Admin WhatsApp Number</label>
+              <input type="text" id="set-admin-phone" class="field-input" value="${Utils.sanitize(settings.adminPhone)}" placeholder="+1-617-555-0000"/>
+            </div>
             <div class="form-field">
               <label class="field-label">WhatsApp API Key</label>
-              <input type="text" id="set-wa-key" class="field-input" value="${Utils.sanitize(settings.whatsappApiKey)}" placeholder="Your Twilio/API key"/>
+              <input type="password" id="set-wa-key" class="field-input" value="${Utils.sanitize(settings.whatsappApiKey)}" placeholder="Your Twilio/API key"/>
             </div>
           </div>
         </div>
@@ -213,10 +252,70 @@ Pages.adminSettings = {
       smtpUser: document.getElementById('set-smtp-user').value,
       smtpPass: document.getElementById('set-smtp-pass').value,
       whatsappApiKey: document.getElementById('set-wa-key').value,
+      emailLogoUrl: document.getElementById('set-email-logo').value.trim(),
+      emailBrandColor: document.getElementById('set-email-color').value,
+      emailHeader: document.getElementById('set-email-header').value.trim(),
+      emailFooter: document.getElementById('set-email-footer').value.trim(),
     };
     DB.saveSettings(settings);
     DB.addAuditLog('system', 'settings', 'updated', null, null);
     Utils.toast('Settings saved successfully!', 'success');
+  },
+
+  testSmtpConnection() {
+    Utils.showModal(
+      '🔌 Test SMTP Connection',
+      `<div class="form-field">
+        <label class="field-label">Send test email to:</label>
+        <input type="email" id="smtp-test-email" class="field-input" placeholder="test@example.com" />
+      </div>`,
+      `<button class="btn btn-ghost" onclick="Utils.closeModal()">Cancel</button>
+       <button class="btn btn-primary" onclick="Pages.adminSettings.confirmTestSmtpConnection()">Send Test Email</button>`
+    );
+  },
+
+  async confirmTestSmtpConnection() {
+    const email = document.getElementById('smtp-test-email').value;
+    if (!Utils.isValidEmail(email)) {
+      Utils.toast('Please enter a valid email address.', 'error');
+      return;
+    }
+    
+    const smtpSettings = {
+      smtpHost: document.getElementById('set-smtp-host').value,
+      smtpPort: document.getElementById('set-smtp-port').value,
+      smtpUser: document.getElementById('set-smtp-user').value,
+      smtpPass: document.getElementById('set-smtp-pass').value,
+    };
+
+    if (!smtpSettings.smtpHost || !smtpSettings.smtpPort || !smtpSettings.smtpUser || !smtpSettings.smtpPass) {
+      Utils.toast('Please fill in all SMTP settings before testing.', 'error');
+      return;
+    }
+
+    Utils.toast('Connecting to SMTP server...', 'info');
+
+    try {
+      const response = await fetch('http://localhost:3000/api/test-smtp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, smtpSettings })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        Utils.closeModal();
+        Utils.toast(data.message, 'success');
+        
+        // Automatically save the successful configuration
+        Pages.adminSettings.saveAllSettings();
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (err) {
+      Utils.toast('Error: ' + err.message, 'error');
+    }
   },
 
   showAddAdminModal() {

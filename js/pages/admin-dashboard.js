@@ -41,6 +41,11 @@ function renderAdminLayout(pageId, contentHtml) {
         <nav class="sidebar-nav">
           <div class="sidebar-section-label">Navigation</div>
           ${navHtml}
+          <div class="sidebar-section-label" style="margin-top:1rem">Communications</div>
+          <div class="sidebar-nav-item ${pageId === 'emails' ? 'active' : ''}" onclick="Router.navigate('emails')">
+            <span class="sidebar-nav-icon">📢</span>
+            <span>Email Templates</span>
+          </div>
           <div class="sidebar-section-label" style="margin-top:1rem">Member Access</div>
           <div class="sidebar-nav-item" onclick="Router.navigate('member-login')">
             <span class="sidebar-nav-icon">🧑‍💼</span>
@@ -156,11 +161,6 @@ Pages.adminDashboard = {
           <div class="stat-card-value">${unpaidContribs}</div>
           <div class="stat-card-label">Unpaid Contributions</div>
         </div>
-        <div class="stat-card" style="--stat-color:var(--clr-suspended);--stat-icon-bg:#FEE2E2">
-          <div class="stat-card-icon">🚫</div>
-          <div class="stat-card-value">${suspended}</div>
-          <div class="stat-card-label">Suspended</div>
-        </div>
       </div>
 
       <!-- Quick Actions -->
@@ -172,7 +172,7 @@ Pages.adminDashboard = {
           <div class="quick-action-icon" style="background:#EFF6FF">📨</div>
           <div class="quick-action-label">Send Registration Link</div>
         </div>
-        <div class="quick-action-card" onclick="Pages.adminMembers.showBulkSendModal()">
+        <div class="quick-action-card" onclick="Router.navigate('emails')">
           <div class="quick-action-icon" style="background:#F0FDF4">📢</div>
           <div class="quick-action-label">Bulk Send Links</div>
         </div>

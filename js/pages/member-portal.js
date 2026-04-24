@@ -343,12 +343,18 @@ Pages.memberPortal = {
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem">
             ${docs.map(d => `
               <div class="card">
-                <div class="card-body" style="display:flex;align-items:center;gap:1rem">
-                  <div style="font-size:2rem;flex-shrink:0">${d.filename ? (d.filename.includes('.pdf') ? '📄' : '🖼️') : '📎'}</div>
-                  <div style="flex:1;min-width:0">
-                    <div style="font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${Utils.sanitize(d.filename || 'Document')}</div>
-                    <div style="font-size:0.75rem;color:var(--clr-text-muted);text-transform:capitalize">${(d.type || 'document').replace(/_/g,' ')}</div>
-                    <div style="font-size:0.7rem;color:var(--clr-text-light)">${Utils.formatDate(d.uploadedAt)}</div>
+                <div class="card-body" style="display:flex;flex-direction:column;gap:1rem">
+                  <div style="display:flex;align-items:center;gap:1rem">
+                    <div style="font-size:2rem;flex-shrink:0">${d.filename ? (d.filename.includes('.pdf') ? '📄' : '🖼️') : '📎'}</div>
+                    <div style="flex:1;min-width:0">
+                      <div style="font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${Utils.sanitize(d.filename || 'Document')}">${Utils.sanitize(d.filename || 'Document')}</div>
+                      <div style="font-size:0.75rem;color:var(--clr-text-muted);text-transform:capitalize">${(d.type || 'document').replace(/_/g,' ')}</div>
+                      <div style="font-size:0.7rem;color:var(--clr-text-light)">${Utils.formatDate(d.uploadedAt)}</div>
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:0.5rem;border-top:1px solid var(--clr-border);padding-top:0.75rem">
+                    <button class="btn btn-sm btn-outline" style="flex:1" onclick="Utils.previewDocument('${d.id}')">👁️ Preview</button>
+                    <button class="btn btn-sm btn-ghost" style="flex:1" onclick="Utils.downloadDocument('${d.id}')">⬇️ Download</button>
                   </div>
                 </div>
               </div>

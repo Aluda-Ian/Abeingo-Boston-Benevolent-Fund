@@ -3,7 +3,40 @@
    All persistent data management
    =========================== */
 const DB = {
-  // Storage keys
+  _state: null,
+
+  async init() {
+    try {
+      const res = await fetch('http://localhost:3000/api/db');
+      if (res.ok) {
+        this._state = await res.json();
+        
+        if (Object.keys(this._state).length === 0) {
+          let migrated = false;
+          Object.values(this.KEYS).forEach(k => {
+            const val = localStorage.getItem(k);
+            if (val) {
+               this._state[k] = JSON.parse(val);
+               migrated = true;
+            }
+          });
+          if (migrated) {
+            await fetch('http://localhost:3000/api/db', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(this._state)
+            });
+          }
+        }
+      } else {
+        this._state = {};
+      }
+    } catch (e) {
+      console.error('Failed to connect to backend DB, falling back to LocalStorage', e);
+      this._state = null;
+    }
+  },
+
   KEYS: {
     members: 'abbf_members',
     admins: 'abbf_admins',
@@ -14,25 +47,36 @@ const DB = {
     documents: 'abbf_documents',
     auditLog: 'abbf_audit_log',
     waiverVersions: 'abbf_waiver_versions',
-    notifications: 'abbf_notifications',
     settings: 'abbf_settings',
     memberSignatures: 'abbf_member_signatures',
+    emailTemplates: 'abbf_email_templates',
   },
 
   get(key) {
+    if (this._state) return this._state[key] || [];
     try {
       return JSON.parse(localStorage.getItem(key)) || [];
     } catch { return []; }
   },
 
   getObj(key) {
+    if (this._state) return this._state[key] || {};
     try {
       return JSON.parse(localStorage.getItem(key)) || {};
     } catch { return {}; }
   },
 
   set(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
+    if (this._state) {
+      this._state[key] = value;
+      fetch('http://localhost:3000/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(this._state)
+      }).catch(e => console.error("Sync failed", e));
+    } else {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
   },
 
   // ID generator
@@ -70,6 +114,10 @@ const DB = {
   deleteMember(id) {
     const members = this.getMembers().filter(m => m.id !== id);
     this.set(this.KEYS.members, members);
+    
+    // Remove associated tokens so they can register fresh
+    const tokens = this.get(this.KEYS.tokens).filter(t => t.memberId !== id);
+    this.set(this.KEYS.tokens, tokens);
   },
 
   updateMemberStatus(id, status) {
@@ -107,13 +155,14 @@ const DB = {
   // ============ Tokens ============
   generateToken(type, memberId, email) {
     const tokens = this.get(this.KEYS.tokens);
+    const expiryDays = type === 'registration' ? 30 : 3; // 30 days for registration, 3 days (72h) for update
     const token = {
       id: this.newGenId('TKN'),
       type, // 'registration' | 'update'
       memberId,
       email,
       createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+      expiresAt: new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString(),
       used: false
     };
     tokens.push(token);
@@ -312,6 +361,80 @@ const DB = {
     this.set(this.KEYS.notifications, notifs);
   },
 
+  apiSendEmails(notifications) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const settings = this.getSettings();
+        if (!settings.smtpHost || !settings.smtpUser || !settings.smtpPass) {
+          throw new Error('SMTP is not fully configured in the Settings page.');
+        }
+
+        const response = await fetch('http://localhost:3000/api/send-bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notifications, smtpSettings: settings })
+        });
+
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message || 'Unknown server error');
+
+        const notifs = this.getNotifications();
+        data.results.forEach(n => {
+          notifs.push({ id: this.newGenId('NOT'), ...n, sentAt: new Date().toISOString() });
+        });
+        this.set(this.KEYS.notifications, notifs);
+
+        resolve({ success: true, message: data.message });
+      } catch (err) {
+        reject(new Error('Network or Server Error: ' + err.message));
+      }
+    });
+  },
+
+  // ============ Email Templates ============
+  getEmailTemplates() {
+    let templates = this.get(this.KEYS.emailTemplates);
+    if (!templates.length) {
+      templates = [
+        { id: 'tpl_general', name: 'General Announcement', subject: 'Important Update from Abeingo BBF', body: 'Dear {member_name},\n\n', isDefault: true },
+        { id: 'tpl_reminder', name: 'Semi-annual Reminder', subject: 'Abeingo BBF — Semi-annual Update', body: 'Dear {member_name},\n\nThis is a gentle reminder to verify your profile information for this semi-annual period.\n\nThank you,\n{admin_name}', isDefault: true },
+        { id: 'tpl_death', name: 'Notice of Bereavement', subject: 'Abeingo BBF — Notice of Bereavement', body: 'Dear {member_name},\n\nWe regret to inform you of the passing of [Name].\n\nPlease keep the family in your thoughts.\n\nSincerely,\n{admin_name}', isDefault: true },
+        { id: 'tpl_reg_link', name: 'Registration Link', subject: 'Your Registration Link - Abeingo BBF', body: 'Dear {member_name},\n\nYou have been invited to join the Abeingo Boston Benevolent Fund.\n\nPlease click the link below to complete your registration:\n<a href="{link}">{link}</a>\n\nThis link will expire in {expiry} hours.\n\nSincerely,\n{admin_name}', isDefault: true },
+        { id: 'tpl_update_link', name: 'Profile Update Link', subject: 'Update Your Profile - Abeingo BBF', body: 'Dear {member_name},\n\nPlease click the link below to update your member profile and beneficiaries:\n<a href="{link}">{link}</a>\n\nThis link will expire in {expiry} hours.\n\nSincerely,\n{admin_name}', isDefault: true }
+      ];
+      this.set(this.KEYS.emailTemplates, templates);
+    } else {
+      let needsSave = false;
+      if (!templates.find(t => t.id === 'tpl_reg_link')) {
+        templates.push({ id: 'tpl_reg_link', name: 'Registration Link', subject: 'Your Registration Link - Abeingo BBF', body: 'Dear {member_name},\n\nYou have been invited to join the Abeingo Boston Benevolent Fund.\n\nPlease click the link below to complete your registration:\n<a href="{link}">{link}</a>\n\nThis link will expire in {expiry} hours.\n\nSincerely,\n{admin_name}', isDefault: true });
+        needsSave = true;
+      }
+      if (!templates.find(t => t.id === 'tpl_update_link')) {
+        templates.push({ id: 'tpl_update_link', name: 'Profile Update Link', subject: 'Update Your Profile - Abeingo BBF', body: 'Dear {member_name},\n\nPlease click the link below to update your member profile and beneficiaries:\n<a href="{link}">{link}</a>\n\nThis link will expire in {expiry} hours.\n\nSincerely,\n{admin_name}', isDefault: true });
+        needsSave = true;
+      }
+      if (needsSave) this.set(this.KEYS.emailTemplates, templates);
+    }
+    return templates;
+  },
+
+  saveEmailTemplate(template) {
+    const templates = this.getEmailTemplates();
+    const i = templates.findIndex(t => t.id === template.id);
+    if (i >= 0) {
+      templates[i] = { ...templates[i], ...template };
+    } else {
+      templates.push({ id: this.newGenId('TPL'), ...template });
+    }
+    this.set(this.KEYS.emailTemplates, templates);
+  },
+
+  deleteEmailTemplate(id) {
+    let templates = this.getEmailTemplates();
+    templates = templates.filter(t => t.id !== id || t.isDefault); // Prevent deleting defaults
+    this.set(this.KEYS.emailTemplates, templates);
+  },
+
   // ============ Settings ============
   getSettings() {
     return this.getObj(this.KEYS.settings);
@@ -341,6 +464,10 @@ const DB = {
       adminPhone: '',
       adminEmail: '',
       currency: 'USD',
+      emailLogoUrl: '',
+      emailBrandColor: '#0f3a63',
+      emailHeader: 'Abeingo Boston Benevolent Fund',
+      emailFooter: '© 2024 Abeingo Boston Benevolent Fund. All rights reserved.\nThis email was sent to members of the fund.',
     };
   },
 
@@ -492,6 +619,38 @@ const DB = {
       ];
       sampleMembers.forEach(m => this.saveMember(m));
     }
+  },
+
+  importData(type, items, overwrite = false) {
+    const key = this.KEYS[type];
+    if (!key) throw new Error(`Invalid import type: ${type}`);
+    
+    let current = this.get(key);
+    let count = 0;
+
+    items.forEach(item => {
+      // Generate ID if missing
+      if (!item.id) {
+        if (type === 'members') item.id = this.newId();
+        else if (type === 'contributions') item.id = this.newGenId('CTB');
+        else item.id = this.newGenId('IMP');
+      }
+
+      const existingIndex = current.findIndex(x => x.id === item.id);
+      if (existingIndex >= 0) {
+        if (overwrite) {
+          current[existingIndex] = { ...current[existingIndex], ...item, updatedAt: new Date().toISOString() };
+          count++;
+        }
+      } else {
+        current.push({ ...item, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+        count++;
+      }
+    });
+
+    this.set(key, current);
+    this.addAuditLog('system', type, 'imported', null, { count });
+    return count;
   }
 };
 

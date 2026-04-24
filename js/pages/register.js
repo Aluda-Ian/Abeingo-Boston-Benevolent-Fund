@@ -179,7 +179,11 @@ Pages.register = {
           </div>
           <div class="form-field">
             <label class="field-label">Set Password<span class="field-required">*</span></label>
-            <input type="password" id="r-password" class="field-input" placeholder="Create a password for member portal"/>
+            <div style="position:relative">
+              <input type="password" id="r-password" class="field-input" placeholder="Create a password for member portal" style="padding-right:40px;"/>
+              <button type="button" onclick="const p=document.getElementById('r-password'); p.type=p.type==='password'?'text':'password';" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.2rem;">👁</button>
+            </div>
+            <div class="field-hint" style="margin-top:0.25rem;">Please note your password somewhere safe — you will need it to log in.</div>
           </div>
         </div>
         ${this.renderFormNav(0)}
@@ -202,9 +206,9 @@ Pages.register = {
       <!-- Step 2: Beneficiaries -->
       <div class="form-step ${this.currentStep === 2 ? 'active' : ''}" id="step-2">
         <div class="form-section-title">🏦 Beneficiaries</div>
-        <div class="alert alert-warning">
-          <span class="alert-icon">⚠️</span>
-          <div class="alert-content">Beneficiaries must be family members listed in the previous step. Primary + Secondary percentages must total 100%.</div>
+        <div class="alert alert-info">
+          <span class="alert-icon">ℹ️</span>
+          <div class="alert-content">Beneficiaries can be any person (not restricted to family members). Primary + Secondary percentages must total 100%.</div>
         </div>
         <div id="beneficiary-container">
           ${this.renderBeneficiarySection()}
@@ -215,9 +219,13 @@ Pages.register = {
       <!-- Step 3: Documents -->
       <div class="form-step ${this.currentStep === 3 ? 'active' : ''}" id="step-3">
         <div class="form-section-title">📁 Document Upload</div>
-        <div class="alert alert-info">
+        <div class="alert alert-info" style="margin-bottom:0.75rem">
           <span class="alert-icon">ℹ️</span>
           <div class="alert-content">Please upload a government-issued ID. This is required for registration.</div>
+        </div>
+        <div class="alert alert-success" style="margin-bottom:1.5rem">
+          <span class="alert-icon">🔒</span>
+          <div class="alert-content">Your documents are securely stored in compliance with United States data protection regulations.</div>
         </div>
         <div class="form-field" style="margin-bottom:1.5rem">
           <label class="field-label">${I18N.t('uploadID')}<span class="field-required">*</span></label>
@@ -349,20 +357,12 @@ Pages.register = {
   },
 
   renderBeneficiarySection() {
-    const family = this.formData.familyMembers || [];
-    const bens = this.formData.beneficiaries || [{ type: 'primary', familyMemberId: '', percentage: 100 }];
-
-    if (!family.length) {
-      return '<div class="alert alert-warning"><span class="alert-icon">⚠️</span><div class="alert-content">Please add family members in the previous step before setting beneficiaries.</div></div>';
-    }
+    const bens = this.formData.beneficiaries || [{ type: 'primary', name: '', percentage: 100 }];
 
     return `
       <div class="form-field" style="margin-bottom:1.5rem">
-        <label class="field-label">Primary Beneficiary<span class="field-required">*</span></label>
-        <select id="ben-primary-member" class="field-select" onchange="Pages.register.updateBeneficiary('primary','familyMemberId',this.value)">
-          <option value="">Select family member...</option>
-          ${family.map((f, i) => `<option value="${f.id}" ${(bens.find(b=>b.type==='primary')?.familyMemberId)===f.id?'selected':''}>${Utils.sanitize(f.firstName)} ${Utils.sanitize(f.lastName)} (${f.relationship})</option>`).join('')}
-        </select>
+        <label class="field-label">Primary Beneficiary Name<span class="field-required">*</span></label>
+        <input type="text" id="ben-primary-name" class="field-input" value="${Utils.sanitize(bens.find(b=>b.type==='primary')?.name||'')}" onchange="Pages.register.updateBeneficiary('primary','name',this.value)" placeholder="Full Name"/>
       </div>
       <div class="form-field" style="margin-bottom:1.5rem">
         <label class="field-label">Primary Beneficiary Percentage</label>
@@ -375,16 +375,13 @@ Pages.register = {
       <div style="height:1px;background:var(--clr-border);margin:1.5rem 0"></div>
 
       <div class="form-field" style="margin-bottom:1.5rem">
-        <label class="field-label">Secondary Beneficiary (optional)</label>
-        <select id="ben-secondary-member" class="field-select" onchange="Pages.register.updateBeneficiary('secondary','familyMemberId',this.value)">
-          <option value="">None</option>
-          ${family.map((f, i) => `<option value="${f.id}" ${(bens.find(b=>b.type==='secondary')?.familyMemberId)===f.id?'selected':''}>${Utils.sanitize(f.firstName)} ${Utils.sanitize(f.lastName)} (${f.relationship})</option>`).join('')}
-        </select>
+        <label class="field-label">Secondary Beneficiary Name (optional)</label>
+        <input type="text" id="ben-secondary-name" class="field-input" value="${Utils.sanitize(bens.find(b=>b.type==='secondary')?.name||'')}" onchange="Pages.register.updateBeneficiary('secondary','name',this.value)" placeholder="Full Name"/>
       </div>
       <div class="form-field">
         <label class="field-label">Secondary Beneficiary Percentage</label>
         <div class="beneficiary-slider">
-          <input type="range" id="ben-secondary-pct" min="0" max="99" value="${bens.find(b=>b.type==='secondary')?.percentage||0}" oninput="Pages.register.onSecondaryPctChange(this.value)" ${!(bens.find(b=>b.type==='secondary')?.familyMemberId)?'disabled':''}/>
+          <input type="range" id="ben-secondary-pct" min="0" max="99" value="${bens.find(b=>b.type==='secondary')?.percentage||0}" oninput="Pages.register.onSecondaryPctChange(this.value)" ${!(bens.find(b=>b.type==='secondary')?.name)?'disabled':''}/>
           <div class="beneficiary-pct" id="secondary-pct-display">${bens.find(b=>b.type==='secondary')?.percentage||0}%</div>
         </div>
       </div>
@@ -396,7 +393,7 @@ Pages.register = {
         <label class="field-label">Next of Kin<span class="field-required">*</span></label>
         <select id="next-of-kin" class="field-select">
           <option value="">Select family member...</option>
-          ${family.map(f => `<option value="${f.id}" ${this.formData.nextOfKinId===f.id?'selected':''}>${Utils.sanitize(f.firstName)} ${Utils.sanitize(f.lastName)} (${f.relationship})</option>`).join('')}
+          ${(this.formData.familyMembers || []).map(f => `<option value="${f.id}" ${this.formData.nextOfKinId===f.id?'selected':''}>${Utils.sanitize(f.firstName)} ${Utils.sanitize(f.lastName)} (${f.relationship})</option>`).join('')}
         </select>
         <div class="field-hint">Must be an immediate family member listed above</div>
       </div>
@@ -427,17 +424,13 @@ Pages.register = {
     if (!this.formData.beneficiaries) this.formData.beneficiaries = [];
     let b = this.formData.beneficiaries.find(x => x.type === type);
     if (!b) {
-      b = { type, familyMemberId: '', percentage: type === 'primary' ? 100 : 0 };
+      b = { type, name: '', percentage: type === 'primary' ? 100 : 0 };
       this.formData.beneficiaries.push(b);
     }
     b[field] = value;
-    if (field === 'familyMemberId') {
-      const fam = (this.formData.familyMembers || []).find(f => f.id === value);
-      if (fam) b.name = `${fam.firstName} ${fam.lastName}`;
-      if (type === 'secondary') {
-        const slider = document.getElementById('ben-secondary-pct');
-        if (slider) slider.disabled = !value;
-      }
+    if (field === 'name' && type === 'secondary') {
+      const slider = document.getElementById('ben-secondary-pct');
+      if (slider) slider.disabled = !value;
     }
   },
 
@@ -643,6 +636,18 @@ Pages.register = {
 
     DB.addAuditLog(memberId, 'member', 'registration_submitted', null, { email: this.formData.email });
 
+    const admins = DB.getAdmins();
+    const adminEmail = admins.length > 0 ? admins[0].email : 'admin@abeingo.org';
+    DB.addNotification({
+      memberId: 'admin',
+      type: 'new_application',
+      channel: 'email',
+      message: `New application received from ${this.formData.firstName} ${this.formData.lastName}. Please review in Pending Approvals.`,
+      subject: 'Abeingo Boston Benevolent Fund – New Application',
+      status: 'sent',
+      recipientEmail: adminEmail
+    });
+
     // Show success
     document.getElementById('app-root').innerHTML = `
       <div class="public-page">
@@ -651,7 +656,7 @@ Pages.register = {
             <div class="success-screen">
               <div class="success-icon">✅</div>
               <h2 class="success-title">${I18N.t('registrationSuccess')}</h2>
-              <p class="success-message">${I18N.t('awaitingApproval')}</p>
+              <p class="success-message">Your application has been submitted. Our team will review and be in touch.</p>
               <div class="alert alert-info">
                 <span class="alert-icon">ℹ️</span>
                 <div class="alert-content">

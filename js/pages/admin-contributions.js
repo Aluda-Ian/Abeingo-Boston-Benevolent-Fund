@@ -101,7 +101,10 @@ Pages.adminContributions = {
       <div class="table-wrapper">
         <div class="table-header">
           <div class="table-header-title">All Contributions</div>
-          <button class="btn btn-sm btn-outline" onclick="PDF.contributionsReport()">📄 Export PDF</button>
+          <div style="display:flex;gap:0.5rem">
+            <button class="btn btn-sm btn-outline" onclick="Utils.showImportModal('contributions')">📥 Import Contributions</button>
+            <button class="btn btn-sm btn-outline" onclick="PDF.contributionsReport()">📄 Export PDF</button>
+          </div>
         </div>
         <table class="data-table">
           <thead>
@@ -191,7 +194,7 @@ Pages.adminContributions = {
                 </div>
                 ${e.notes ? `<p style="font-size:0.8rem;color:var(--clr-text-muted)">${Utils.sanitize(e.notes)}</p>` : ''}
                 <div style="display:flex;gap:0.5rem;margin-top:0.75rem">
-                  <button class="btn btn-sm btn-ghost" onclick="Notifications.sendDeathNotification(DB.getDeathEvent('${e.id}'))">📧 Resend Notification</button>
+                  <button class="btn btn-sm btn-ghost" onclick="const e=DB.getDeathEvent('${e.id}'); Router.navigate('emails', {type: 'death', subject: 'Abeingo BBF — Notice of Bereavement', body: \`Dear {member_name},\\n\\nWe regret to inform you of the passing of \${e.deceasedName} on \${Utils.formatDate(e.dateOfDeath)}.\\n\\nPlease keep the family in your thoughts.\\n\\nSincerely,\\n{admin_name}\`})">📧 Send Notification</button>
                   <button class="btn btn-sm btn-ghost" onclick="PDF.contributionsReport()">📄 Export</button>
                 </div>
               </div>
@@ -263,8 +266,14 @@ Pages.adminContributions = {
     e.verifiedBy = Auth.currentUser.id;
     DB.set(DB.KEYS.deathEvents, events);
     DB.addAuditLog(id, 'death_event', 'verified', {verified:false}, {verified:true});
-    Utils.toast('Death event verified', 'success');
+    
+    Utils.toast('Death event verified. Please review the notification.', 'success');
     this.render();
+    
+    const prefilledBody = `Dear {member_name},\n\nWe regret to inform you of the passing of ${e.deceasedName} on ${Utils.formatDate(e.dateOfDeath)}.\n\nPlease keep the family in your thoughts.\n\nSincerely,\n{admin_name}`;
+    setTimeout(() => {
+      Router.navigate('emails', { type: 'death', subject: 'Abeingo BBF — Notice of Bereavement', body: prefilledBody });
+    }, 100);
   },
 
   showDeathEventModal() {
@@ -344,9 +353,18 @@ Pages.adminContributions = {
     });
 
     DB.addAuditLog(event.id, 'death_event', 'created', null, { deceasedName: name });
-    Notifications.sendDeathNotification(event);
+    
     Utils.closeModal();
-    Utils.toast(`Death event recorded. Contributions created for all active members.`, 'success');
     this.render();
+    
+    if (verified) {
+      Utils.toast(`Death event recorded. Please review the notification.`, 'success');
+      const prefilledBody = `Dear {member_name},\n\nWe regret to inform you of the passing of ${name} on ${Utils.formatDate(date)}.\n\nPlease keep the family in your thoughts.\n\nSincerely,\n{admin_name}`;
+      setTimeout(() => {
+        Router.navigate('emails', { type: 'death', subject: 'Abeingo BBF — Notice of Bereavement', body: prefilledBody });
+      }, 100);
+    } else {
+      Utils.toast(`Death event recorded.`, 'success');
+    }
   }
 };

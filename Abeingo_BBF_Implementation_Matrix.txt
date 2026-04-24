@@ -1,0 +1,68 @@
+Abeingo Boston Benevolent Fund — Implementation Matrix
+========================================================
+
+1. Key Features to Implement
+----------------------------
+
+A. Admin-Generated Registration Link System
+- Admin can send a registration link by entering an applicant’s email in the Members module.
+- System generates a unique, secure, single-use registration URL (token, 30-day expiry).
+- System emails the applicant automatically; admin never copies the link.
+- Duplicate email check before generating a link.
+- Admin notified by email when a new application is submitted.
+- Registration form: show/hide password, beneficiary field, multi-file upload, confirmation screen.
+
+B. Customisable Bulk Email Templates
+- Admin can edit subject/body of bulk emails (death notifications, reminders, announcements) before sending.
+- Rich-text editor for email body (bold, italic, paragraph breaks, placeholders).
+- Live preview of email.
+- Recipient group selection and optional scheduling.
+- “Reset to default” restores template.
+
+C. Document Preview & Multi-Format Download
+- All documents (uploads, reports, exports) are previewed in-browser before download.
+- Supported previews: PDF, images, Word, Excel, text, TIFF.
+- Download original, export as PDF/Excel, bulk ZIP download.
+- Secure, time-limited URLs for document access.
+
+
+2. Implementation Plan
+----------------------
+
+1. Registration Link System
+   - Add a “Send Registration Link” button in the Members module UI.
+   - Modal dialog for admin to enter applicant email.
+   - Backend endpoint to:
+     - Validate email (format, uniqueness).
+     - Generate secure token (UUID v4), store with metadata (email, expiry, used).
+     - Send registration email with link.
+   - Registration form page to:
+     - Accept token, validate expiry/usage.
+     - Allow registration (with show/hide password, beneficiary, file upload).
+     - Mark token as used after submission.
+   - Email notification to admin on new application.
+
+2. Bulk Email Templates
+   - Bulk Send UI with:
+     - Dropdown for email type (announcement, reminder, death, custom).
+     - Editable subject/body (rich-text editor with formatting, placeholders, char count).
+     - Live preview panel.
+     - Recipient group selection.
+     - Send/Schedule button with confirmation dialog.
+   - Backend to:
+     - Store and retrieve templates.
+     - Send emails to selected recipients.
+
+3. Document Preview & Download
+   - Documents tab in member/admin portals.
+   - Card/list view for each document with preview/download/export buttons.
+   - In-browser previewers:
+     - PDF: embedded viewer.
+     - Images: lightbox with zoom/pan.
+     - Word/Excel: server-side conversion to HTML/table for preview.
+     - Text: monospace viewer.
+     - TIFF: page-by-page image preview.
+   - Backend to:
+     - Serve secure, time-limited URLs for document access.
+     - Convert files for preview/export as needed.
+     - Support bulk ZIP download.

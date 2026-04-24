@@ -1,0 +1,431 @@
+{
+  "abbf_members": [
+    {
+      "id": "MBR-001",
+      "firstName": "John",
+      "lastName": "Abeingo",
+      "email": "john.abeingo@email.com",
+      "phone": "+1-617-555-0101",
+      "address": "123 Main Street",
+      "city": "Boston",
+      "state": "MA",
+      "zipCode": "02101",
+      "country": "USA",
+      "dateOfBirth": "1985-03-15",
+      "gender": "male",
+      "occupation": "Engineer",
+      "status": "active",
+      "joinDate": "2023-01-15",
+      "kittyBalance": 150,
+      "gracePeriodEnd": null,
+      "lastVerified": "2024-07-01",
+      "familyMembers": [
+        {
+          "id": "FM-001",
+          "firstName": "Mary",
+          "lastName": "Abeingo",
+          "relationship": "spouse",
+          "dateOfBirth": "1987-06-20",
+          "status": "alive"
+        },
+        {
+          "id": "FM-002",
+          "firstName": "James",
+          "lastName": "Abeingo",
+          "relationship": "child",
+          "dateOfBirth": "2010-09-05",
+          "status": "alive"
+        }
+      ],
+      "nextOfKinId": "FM-001",
+      "beneficiaries": [
+        {
+          "familyMemberId": "FM-001",
+          "name": "Mary Abeingo",
+          "type": "primary",
+          "percentage": 70
+        },
+        {
+          "familyMemberId": "FM-002",
+          "name": "James Abeingo",
+          "type": "secondary",
+          "percentage": 30
+        }
+      ],
+      "approvedAt": "2023-01-16",
+      "approvedBy": "admin-001",
+      "createdAt": "2026-04-24T21:42:15.087Z",
+      "updatedAt": "2026-04-24T21:42:15.087Z"
+    },
+    {
+      "id": "MBR-002",
+      "firstName": "Grace",
+      "lastName": "Okonkwo",
+      "email": "grace.okonkwo@email.com",
+      "phone": "+1-617-555-0202",
+      "address": "456 Elm Avenue",
+      "city": "Boston",
+      "state": "MA",
+      "zipCode": "02102",
+      "country": "USA",
+      "dateOfBirth": "1979-11-22",
+      "gender": "female",
+      "occupation": "Nurse",
+      "status": "active",
+      "joinDate": "2023-03-01",
+      "kittyBalance": 200,
+      "gracePeriodEnd": null,
+      "lastVerified": "2024-07-15",
+      "familyMembers": [
+        {
+          "id": "FM-003",
+          "firstName": "Paul",
+          "lastName": "Okonkwo",
+          "relationship": "spouse",
+          "dateOfBirth": "1977-04-10",
+          "status": "alive"
+        }
+      ],
+      "nextOfKinId": "FM-003",
+      "beneficiaries": [
+        {
+          "familyMemberId": "FM-003",
+          "name": "Paul Okonkwo",
+          "type": "primary",
+          "percentage": 100
+        }
+      ],
+      "approvedAt": "2023-03-02",
+      "approvedBy": "admin-001",
+      "createdAt": "2026-04-24T21:42:15.088Z",
+      "updatedAt": "2026-04-24T21:42:15.088Z"
+    },
+    {
+      "id": "MBR-003",
+      "firstName": "David",
+      "lastName": "Mensah",
+      "email": "david.mensah@email.com",
+      "phone": "+1-617-555-0303",
+      "address": "789 Oak Drive",
+      "city": "Cambridge",
+      "state": "MA",
+      "zipCode": "02139",
+      "country": "USA",
+      "dateOfBirth": "1990-07-08",
+      "gender": "male",
+      "occupation": "Teacher",
+      "status": "grace",
+      "joinDate": "2024-10-01",
+      "kittyBalance": 25,
+      "gracePeriodEnd": "2025-01-01",
+      "lastVerified": null,
+      "familyMembers": [],
+      "beneficiaries": [],
+      "approvedAt": null,
+      "approvedBy": null,
+      "createdAt": "2026-04-24T21:42:15.088Z",
+      "updatedAt": "2026-04-24T21:42:15.088Z"
+    },
+    {
+      "id": "MBR-004",
+      "firstName": "Amina",
+      "lastName": "Diallo",
+      "email": "amina.diallo@email.com",
+      "phone": "+1-617-555-0404",
+      "address": "101 Pine Street",
+      "city": "Roxbury",
+      "state": "MA",
+      "zipCode": "02119",
+      "country": "USA",
+      "dateOfBirth": "1983-02-28",
+      "gender": "female",
+      "occupation": "Accountant",
+      "status": "pending",
+      "joinDate": null,
+      "kittyBalance": 0,
+      "gracePeriodEnd": null,
+      "lastVerified": null,
+      "familyMembers": [],
+      "beneficiaries": [],
+      "approvedAt": null,
+      "approvedBy": null,
+      "createdAt": "2026-04-24T21:42:15.088Z",
+      "updatedAt": "2026-04-24T21:42:15.088Z"
+    },
+    {
+      "id": "MBR-Q75D2SEMK",
+      "email": "bryansmithmc58@gmail.com",
+      "firstName": "Brian",
+      "lastName": "Member",
+      "status": "pending",
+      "kittyBalance": 0,
+      "createdAt": "2026-04-24T22:39:44.513Z",
+      "updatedAt": "2026-04-24T22:39:44.513Z"
+    }
+  ],
+  "abbf_admins": [
+    {
+      "id": "admin-001",
+      "firstName": "Super",
+      "lastName": "Admin",
+      "email": "admin@abeingo.org",
+      "password": "Admin@1234",
+      "role": "super_admin",
+      "active": true,
+      "createdAt": "2026-04-24T21:42:15.085Z"
+    },
+    {
+      "id": "admin-002",
+      "firstName": "Committee",
+      "lastName": "Member",
+      "email": "committee@abeingo.org",
+      "password": "Committee@1234",
+      "role": "committee",
+      "active": true,
+      "createdAt": "2026-04-24T21:42:15.086Z"
+    }
+  ],
+  "abbf_tokens": [
+    {
+      "id": "TKNMODGPTVH9QB9",
+      "type": "update",
+      "memberId": "MBR-003",
+      "email": "david.mensah@email.com",
+      "createdAt": "2026-04-24T22:08:45.437Z",
+      "expiresAt": "2026-04-27T22:08:45.437Z",
+      "used": false
+    },
+    {
+      "id": "TKNMODGYKUSA5DM",
+      "type": "update",
+      "memberId": "MBR-001",
+      "email": "john.abeingo@email.com",
+      "createdAt": "2026-04-24T22:15:33.652Z",
+      "expiresAt": "2026-04-27T22:15:33.652Z",
+      "used": false
+    },
+    {
+      "id": "TKNMODGYKUU9Q4R",
+      "type": "update",
+      "memberId": "MBR-002",
+      "email": "grace.okonkwo@email.com",
+      "createdAt": "2026-04-24T22:15:33.654Z",
+      "expiresAt": "2026-04-27T22:15:33.654Z",
+      "used": false
+    },
+    {
+      "id": "TKNMODGYKUVUOL9",
+      "type": "update",
+      "memberId": "MBR-003",
+      "email": "david.mensah@email.com",
+      "createdAt": "2026-04-24T22:15:33.655Z",
+      "expiresAt": "2026-04-27T22:15:33.655Z",
+      "used": false
+    },
+    {
+      "id": "TKNMODGYPTV1QC2",
+      "type": "update",
+      "memberId": "MBR-001",
+      "email": "john.abeingo@email.com",
+      "createdAt": "2026-04-24T22:15:40.099Z",
+      "expiresAt": "2026-04-27T22:15:40.099Z",
+      "used": false
+    },
+    {
+      "id": "TKNMODGYPTW15II",
+      "type": "update",
+      "memberId": "MBR-002",
+      "email": "grace.okonkwo@email.com",
+      "createdAt": "2026-04-24T22:15:40.100Z",
+      "expiresAt": "2026-04-27T22:15:40.100Z",
+      "used": false
+    },
+    {
+      "id": "TKNMODGYPTY0V31",
+      "type": "update",
+      "memberId": "MBR-003",
+      "email": "david.mensah@email.com",
+      "createdAt": "2026-04-24T22:15:40.102Z",
+      "expiresAt": "2026-04-27T22:15:40.102Z",
+      "used": false
+    },
+    {
+      "id": "TKNMODHI4UJBXR9",
+      "type": "registration",
+      "memberId": "MBR-R6VTZN1M3",
+      "email": "ianaluda27@gmail.com",
+      "createdAt": "2026-04-24T22:30:46.027Z",
+      "expiresAt": "2026-05-24T22:30:46.027Z",
+      "used": false
+    },
+    {
+      "id": "TKNMODHKM0WH6KO",
+      "type": "update",
+      "memberId": "MBR-R6VTZN1M3",
+      "email": "ianaluda27@gmail.com",
+      "createdAt": "2026-04-24T22:32:41.600Z",
+      "expiresAt": "2026-04-27T22:32:41.600Z",
+      "used": false
+    },
+    {
+      "id": "TKNMODHLAKOV4G8",
+      "type": "update",
+      "memberId": "MBR-R6VTZN1M3",
+      "email": "ianaluda27@gmail.com",
+      "createdAt": "2026-04-24T22:33:13.416Z",
+      "expiresAt": "2026-04-27T22:33:13.416Z",
+      "used": false
+    },
+    {
+      "id": "TKNMODHTOCIR9OO",
+      "type": "registration",
+      "memberId": "MBR-Q75D2SEMK",
+      "email": "bryansmithmc58@gmail.com",
+      "createdAt": "2026-04-24T22:39:44.514Z",
+      "expiresAt": "2026-05-24T22:39:44.514Z",
+      "used": false
+    }
+  ],
+  "abbf_audit_log": [
+    {
+      "id": "AUDMODFRYIF8O41",
+      "entityId": "admin-001",
+      "entityType": "admin",
+      "action": "login",
+      "oldValue": "null",
+      "newValue": "null",
+      "performedBy": "admin@abeingo.org",
+      "timestamp": "2026-04-24T21:42:25.143Z"
+    },
+    {
+      "id": "AUDMODGBKT8G2YR",
+      "entityId": "admin-001",
+      "entityType": "admin",
+      "action": "login",
+      "oldValue": "null",
+      "newValue": "null",
+      "performedBy": "admin@abeingo.org",
+      "timestamp": "2026-04-24T21:57:40.508Z"
+    },
+    {
+      "id": "AUDMODGDCR41JP9",
+      "entityId": "admin-001",
+      "entityType": "admin",
+      "action": "login",
+      "oldValue": "null",
+      "newValue": "null",
+      "performedBy": "admin@abeingo.org",
+      "timestamp": "2026-04-24T21:59:03.376Z"
+    },
+    {
+      "id": "AUDMODHIQ1QQSI4",
+      "entityId": "system",
+      "entityType": "settings",
+      "action": "updated",
+      "oldValue": "null",
+      "newValue": "null",
+      "performedBy": "admin@abeingo.org",
+      "timestamp": "2026-04-24T22:31:13.502Z"
+    },
+    {
+      "id": "AUDMODHL4GOU7SA",
+      "entityId": "",
+      "entityType": "member",
+      "action": "rejected",
+      "oldValue": "null",
+      "newValue": "{\"status\":\"terminated\"}",
+      "performedBy": "admin@abeingo.org",
+      "timestamp": "2026-04-24T22:33:05.496Z"
+    },
+    {
+      "id": "AUDMODHOX0V1V4K",
+      "entityId": "MBR-R6VTZN1M3",
+      "entityType": "member",
+      "action": "deleted",
+      "oldValue": "{\"name\":\"Ian Member\"}",
+      "newValue": "null",
+      "performedBy": "admin@abeingo.org",
+      "timestamp": "2026-04-24T22:36:02.479Z"
+    }
+  ],
+  "abbf_waiver_versions": [
+    {
+      "id": "WVRMODFRQR3TWJF",
+      "version": "v1.0",
+      "content": "<h4>Waiver of Liabilities</h4>\n<p>1. In consideration of my voluntary participation in the Abeingo Boston Benevolent Fund, I hereby RELEASE, WAIVE, DISCHARGE AND agree NOT TO SUE, The Abeingo Boston Benevolent Group Committee (herein after referred to as RELEASEES) from all liability, claims, demands, action and causes of action whatsoever arising out of or related to all issues, WHETHER CAUSED BY THE NEGLIGENCE OF THE RELEASEES, or otherwise, while participating in the Abeingo Benevolent Fund.</p>\n<p>2. If there is no proof of death and a payment is declined, I will not SUE the committee, and the members of the committee will not be liable.</p>\n<p>3. I further hereby agree that my membership to the said fund is non-transferable. The registration fee is nonrefundable and I will not sue or request any refund from Abeingo Boston Benevolent Fund after membership termination either voluntary or any other reason deemed to render me as non Abeingo Boston Benevolent Fund member.</p>\n<h4>Contribution Replenishment</h4>\n<p>I hereby agree and covenant to submit and will replenish contribution within 15 business days after being notified of the death of an individual covered by the Benevolent fund. This amount may vary from time to time based on the membership of fund. If the payment is not received by the deadline date, there will be a late fee $5.00 for the first week and additional of $2.00 for the second week and $2.00 for each subsequent week until I have exhausted all the funds in the Kitty.</p>\n<h4>Beneficiaries/Data Update</h4>\n<p>I further hereby affirm that it is my understanding that only members of my immediate family are included in my fund application Form and are covered in this benevolent fund. I further hereby agree that it is my sole responsibility to update my membership data with any new members of my family limited to newborn children and spouse in the event of marriage after the initial application submission.</p>\n<h4>Exceptions</h4>\n<p>Whereas the $10 registration fee is non-refundable, members can be refunded part of their membership fees. To be refunded, members need to submit a written request to the committee, which will have 30 days to review the letter. In case of a death occurs within the 30-day review, a member will be refunded their money minus the payout for the death.</p>\n<h4>Grace Period</h4>\n<p>Notwithstanding all terms and provisions of this program, I further hereby consent that nothing shall be paid to me during the (90 days) grace period of the said fund. Accordingly, therefore, unless otherwise stated the benefits shall accrue not earlier than the benevolent start date.</p>\n<h4>Death Verification</h4>\n<p>I further hereby agree and consent that Abeingo Boston Benevolent Fund committee, at their discretion may verify any reported death. Verifiable proof may include, but not limited to, burial permit, newspaper announcement, member testimonials, local authorities, religious leaders and/or congregations, social media and/or public forums etc. I agree to submit all requested documents that maybe required before or after the funds are disbursed depending on the request. I hereby consent that in case of any disputes, the same shall be referred to the Committee and upon fair hearing their decision will be final.</p>\n<h4>Acknowledgment</h4>\n<p>IN SIGNING THIS WAIVER/RELEASE, I ACKNOWLEDGE AND REPRESENT THAT I have read the foregoing waivers, waiver of Liability and hold harmless agreement, understand it and sign it voluntarily as my own free act and deed; no oral representations, statements, or inducements, apart from the foregoing written agreement, have been made; I am at least eighteen (18 yrs) years of age and fully competent; and I have voluntarily executed the release for full, adequate and complete consideration fully intending to be bound by same.</p>",
+      "effectiveDate": "2026-04-24T21:42:15.087Z",
+      "createdBy": "admin"
+    }
+  ],
+  "abbf_settings": {
+    "orgName": "Abeingo Boston Benevolent Fund",
+    "currency": "USD",
+    "registrationFee": 10,
+    "gracePeriodDays": 90,
+    "lateFeeWeek1": 5,
+    "lateFeeWeek2Plus": 2,
+    "paymentDueDays": 15,
+    "linkExpiryHours": 72,
+    "semiAnnualReminderMonths": 6,
+    "emailEnabled": true,
+    "whatsappEnabled": false,
+    "adminEmail": "admin@vendatechnologies.com",
+    "adminPhone": "",
+    "smtpHost": "mail.vendatechnologies.com",
+    "smtpPort": "465",
+    "smtpUser": "admin@vendatechnologies.com",
+    "smtpPass": "@Munangwe212",
+    "whatsappApiKey": ""
+  },
+  "abbf_email_templates": [
+    {
+      "id": "tpl_general",
+      "name": "General Announcement",
+      "subject": "Important Update from Abeingo BBF",
+      "body": "Dear {member_name},\n\n",
+      "isDefault": true
+    },
+    {
+      "id": "tpl_reminder",
+      "name": "Semi-annual Reminder",
+      "subject": "Abeingo BBF — Semi-annual Update",
+      "body": "Dear {member_name},\n\nThis is a gentle reminder to verify your profile information for this semi-annual period.\n\nThank you,\n{admin_name}",
+      "isDefault": true
+    },
+    {
+      "id": "tpl_death",
+      "name": "Notice of Bereavement",
+      "subject": "Abeingo BBF — Notice of Bereavement",
+      "body": "Dear {member_name},\n\nWe regret to inform you of the passing of [Name].\n\nPlease keep the family in your thoughts.\n\nSincerely,\n{admin_name}",
+      "isDefault": true
+    },
+    {
+      "id": "tpl_reg_link",
+      "name": "Registration Link",
+      "subject": "Your Registration Link - Abeingo BBF",
+      "body": "Dear {member_name},\n\nYou have been invited to join the Abeingo Boston Benevolent Fund.\n\nPlease click the link below to complete your registration:\n<a href=\"{link}\">{link}</a>\n\nThis link will expire in {expiry} hours.\n\nSincerely,\n{admin_name}",
+      "isDefault": true
+    },
+    {
+      "id": "tpl_update_link",
+      "name": "Profile Update Link",
+      "subject": "Update Your Profile - Abeingo BBF",
+      "body": "Dear {member_name},\n\nPlease click the link below to update your member profile and beneficiaries:\n<a href=\"{link}\">{link}</a>\n\nThis link will expire in {expiry} hours.\n\nSincerely,\n{admin_name}",
+      "isDefault": true
+    }
+  ],
+  "undefined": [
+    {
+      "id": "NOTMODHKM0Y7H0J",
+      "memberId": "MBR-R6VTZN1M3",
+      "type": "update_link",
+      "channel": "email",
+      "message": "Update link: http://127.0.0.1:5500/index.html?page=update&token=TKNMODHKM0WH6KO\nExpires: Apr 28, 2026, 01:32 AM",
+      "subject": "Abeingo Boston Benevolent Fund – Update Your Information",
+      "status": "sent",
+      "recipientEmail": "ianaluda27@gmail.com",
+      "link": "http://127.0.0.1:5500/index.html?page=update&token=TKNMODHKM0WH6KO",
+      "sentAt": "2026-04-24T22:32:41.602Z"
+    }
+  ]
+}

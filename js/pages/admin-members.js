@@ -19,7 +19,7 @@ Pages.adminMembers = {
             <p class="page-subtitle">Manage all fund members, send links, and track status.</p>
           </div>
           <div class="page-actions">
-            <button class="btn btn-outline" onclick="Pages.adminMembers.showBulkSendModal()">📢 ${I18N.t('bulkSend')}</button>
+            <button class="btn btn-outline" onclick="Router.navigate('emails')">📢 ${I18N.t('bulkSend')}</button>
             <button class="btn btn-primary" onclick="Pages.adminMembers.showSendLinkModal()">+ ${I18N.t('sendInvite')}</button>
           </div>
         </div>
@@ -44,6 +44,8 @@ Pages.adminMembers = {
           <button class="view-toggle-btn ${this.currentView==='grid'?'active':''}" onclick="Pages.adminMembers.setView('grid')">⊞ Grid</button>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="PDF.membersReport(DB.getMembers())">📄 ${I18N.t('exportPDF')}</button>
+        <button class="btn btn-ghost btn-sm" onclick="Utils.exportCSV('members.csv', Utils.membersToCSV(DB.getMembers()))">📊 Export Excel</button>
+        <button class="btn btn-ghost btn-sm" onclick="Utils.showImportModal('members')" style="color:var(--clr-primary)">📥 Import Data</button>
         <span style="color:var(--clr-text-muted);font-size:var(--text-sm)">${members.length} members</span>
       </div>
 
@@ -214,6 +216,7 @@ Pages.adminMembers = {
         <button class="btn btn-success" style="width:100%;justify-content:flex-start" onclick="Utils.closeModal();Pages.adminMembers.approveMember('${memberId}')">✅ Approve Membership</button>
         <button class="btn btn-danger" style="width:100%;justify-content:flex-start" onclick="Utils.closeModal();Pages.adminMembers.rejectMember('${memberId}')">❌ Reject Application</button>
         ` : ''}
+        <button class="btn btn-danger" style="width:100%;justify-content:flex-start;margin-top:0.5rem" onclick="Utils.closeModal();Pages.adminMembers.deleteMember('${memberId}')">🗑️ Delete Member</button>
       </div>`
     );
   },
@@ -310,8 +313,22 @@ Pages.adminMembers = {
         <!-- Documents -->
         ${docs.length ? `
           <div style="font-size:0.8rem;font-weight:700;color:var(--clr-primary);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem">📁 Documents (${docs.length})</div>
-          <div style="background:var(--clr-surface-2);border-radius:var(--radius);padding:0.75rem;margin-bottom:0.75rem">
-            ${docs.map(d => `<div style="font-size:0.8rem;padding:4px 0;border-bottom:1px solid var(--clr-border)">📄 ${Utils.sanitize(d.filename)} <span style="color:var(--clr-text-muted)">– ${Utils.formatDate(d.uploadedAt)}</span></div>`).join('')}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem">
+            ${docs.map(d => `
+              <div style="background:var(--clr-surface-2);border-radius:var(--radius);padding:0.75rem;border:1px solid var(--clr-border)">
+                <div style="display:flex;align-items:flex-start;gap:0.75rem;margin-bottom:0.75rem">
+                  <div style="font-size:1.5rem">${d.filename ? (d.filename.includes('.pdf') ? '📄' : '🖼️') : '📎'}</div>
+                  <div style="flex:1;min-width:0">
+                    <div style="font-weight:600;font-size:0.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${Utils.sanitize(d.filename)}">${Utils.sanitize(d.filename)}</div>
+                    <div style="font-size:0.7rem;color:var(--clr-text-muted)">Uploaded ${Utils.formatDate(d.uploadedAt)}</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:0.5rem">
+                  <button class="btn btn-sm btn-outline" style="flex:1;padding:0.25rem;font-size:0.7rem" onclick="Utils.previewDocument('${d.id}')">👁️ Preview</button>
+                  <button class="btn btn-sm btn-ghost" style="flex:1;padding:0.25rem;font-size:0.7rem" onclick="Utils.downloadDocument('${d.id}')">⬇️ Download</button>
+                </div>
+              </div>
+            `).join('')}
           </div>
         ` : ''}
 
@@ -368,6 +385,22 @@ Pages.adminMembers = {
     );
   },
 
+  deleteMember(id) {
+    const m = DB.getMember(id);
+    if (!m) return;
+    Utils.confirm(
+      '🗑️ Delete Member',
+      `Are you sure you want to completely delete <strong>${Utils.sanitize(Utils.fullName(m))}</strong>? This action cannot be undone and will remove all their data.`,
+      () => {
+        DB.deleteMember(id);
+        DB.addAuditLog(id, 'member', 'deleted', { name: Utils.fullName(m) }, null);
+        Utils.toast(`Member ${Utils.sanitize(Utils.fullName(m))} deleted successfully`, 'success');
+        Pages.adminMembers.render();
+      },
+      true
+    );
+  },
+
   changeStatus(id) {
     const m = DB.getMember(id);
     Utils.showModal(
@@ -389,30 +422,36 @@ Pages.adminMembers = {
     );
   },
 
-  sendUpdateLink(id) {
-    const result = Utils.sendUpdateLink(id);
-    if (!result) { Utils.toast('Could not generate link', 'error'); return; }
-    const m = DB.getMember(id);
-    Utils.showModal(
-      '📨 Update Link Generated',
-      `<div>
-        <div class="alert alert-info"><span class="alert-icon">ℹ️</span><div class="alert-content">Link expires in <strong>72 hours</strong>. Share with the member by email or WhatsApp.</div></div>
-        <div style="margin-bottom:0.75rem">
-          <div style="font-size:0.75rem;color:var(--clr-text-muted);margin-bottom:4px">Member: ${Utils.sanitize(Utils.fullName(m))}</div>
-          <div style="font-size:0.75rem;color:var(--clr-text-muted);margin-bottom:8px">Expires: ${Utils.formatDateTime(result.token.expiresAt)}</div>
-          <div style="background:var(--clr-surface-2);border:1px solid var(--clr-border);border-radius:var(--radius);padding:0.75rem;font-size:0.8rem;word-break:break-all;font-family:monospace">${result.link}</div>
-        </div>
-      </div>`,
-      `<button class="btn btn-ghost" onclick="Utils.closeModal()">Close</button>
-       <button class="btn btn-primary" onclick="Utils.copyToClipboard('${result.link}')">📋 Copy Link</button>`
-    );
+  async sendUpdateLink(id) {
+    Utils.toast('Sending update link...', 'info');
+    try {
+      const result = await Utils.sendUpdateLink(id);
+      if (!result) { Utils.toast('Could not generate link', 'error'); return; }
+      const m = DB.getMember(id);
+      Utils.showModal(
+        '📨 Update Link Sent',
+        `<div>
+          <div class="alert alert-info"><span class="alert-icon">ℹ️</span><div class="alert-content">Link expires in <strong>72 hours</strong>. An email was securely sent to the member.</div></div>
+          <div style="margin-bottom:0.75rem">
+            <div style="font-size:0.75rem;color:var(--clr-text-muted);margin-bottom:4px">Member: ${Utils.sanitize(Utils.fullName(m))}</div>
+            <div style="font-size:0.75rem;color:var(--clr-text-muted);margin-bottom:8px">Expires: ${Utils.formatDateTime(result.token.expiresAt)}</div>
+            <div style="background:var(--clr-surface-2);border:1px solid var(--clr-border);border-radius:var(--radius);padding:0.75rem;font-size:0.8rem;word-break:break-all;font-family:monospace">${result.link}</div>
+          </div>
+        </div>`,
+        `<button class="btn btn-ghost" onclick="Utils.closeModal()">Close</button>
+         <button class="btn btn-primary" onclick="Utils.copyToClipboard('${result.link}')">📋 Copy Link</button>`
+      );
+      Utils.toast(`Update link successfully emailed to ${m.email}`, 'success');
+    } catch (err) {
+      Utils.toast('Failed to send email: ' + err.message, 'error');
+    }
   },
 
   showSendLinkModal() {
     Utils.showModal(
       '📨 Send Registration Link',
       `<div>
-        <div class="alert alert-info"><span class="alert-icon">ℹ️</span><div class="alert-content">A unique 72-hour registration link will be generated and logged. Share it with the new member.</div></div>
+        <div class="alert alert-info"><span class="alert-icon">ℹ️</span><div class="alert-content">A unique 30-day registration link will be generated and logged. Share it with the new member.</div></div>
         <div class="form-field" style="margin-bottom:1rem">
           <label class="field-label">Full Name</label>
           <input type="text" id="new-member-name" class="field-input" placeholder="First Last"/>
@@ -427,47 +466,57 @@ Pages.adminMembers = {
     );
   },
 
-  confirmSendLink() {
+  async confirmSendLink() {
     const email = document.getElementById('new-member-email').value.trim();
     const name = document.getElementById('new-member-name').value.trim();
-    if (!email || !Utils.isValidEmail(email)) { Utils.toast('Please enter a valid email', 'error'); return; }
-    const result = Utils.sendRegistrationLink(email, name);
-    Utils.closeModal();
-    Utils.showModal(
-      '✅ Registration Link Created',
-      `<div>
-        <div class="alert alert-success"><span class="alert-icon">✅</span><div class="alert-content">Link generated and logged for <strong>${Utils.sanitize(email)}</strong></div></div>
-        <div class="expiry-badge" style="margin-bottom:0.75rem">⏰ Expires: ${Utils.formatDateTime(result.token.expiresAt)}</div>
-        <div style="background:var(--clr-surface-2);border:1px solid var(--clr-border);border-radius:var(--radius);padding:0.75rem;font-size:0.8rem;word-break:break-all;font-family:monospace">${result.link}</div>
-      </div>`,
-      `<button class="btn btn-ghost" onclick="Utils.closeModal()">Close</button>
-       <button class="btn btn-primary" onclick="Utils.copyToClipboard('${result.link}')">📋 Copy Link</button>`
+    if (!email || !Utils.isValidEmail(email)) { Utils.toast('Please enter a valid email address.', 'error'); return; }
+
+    const existingMember = DB.getMemberByEmail(email);
+    if (existingMember && existingMember.status !== 'pending' && existingMember.status !== 'terminated') {
+      Utils.toast('This email is already registered.', 'error');
+      return;
+    }
+
+    const tokens = DB.get(DB.KEYS.tokens);
+    const activeToken = tokens.find(t => 
+      t.email.toLowerCase() === email.toLowerCase() && 
+      t.type === 'registration' && 
+      !t.used && 
+      new Date() < new Date(t.expiresAt) &&
+      DB.getMember(t.memberId) // Ignore orphaned tokens from deleted members
     );
+    if (activeToken) {
+      Utils.toast('An active registration link already exists for this email.', 'error');
+      return;
+    }
+
+    Utils.toast('Sending registration email...', 'info');
+    const submitBtn = document.querySelector('.modal-footer .btn-primary');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Sending...'; }
+
+    try {
+      const result = await Utils.sendRegistrationLink(email, name);
+      Utils.closeModal();
+      Utils.showModal(
+        '✅ Registration Link Sent',
+        `<div>
+          <div class="alert alert-success"><span class="alert-icon">✅</span><div class="alert-content">Link successfully emailed to <strong>${Utils.sanitize(email)}</strong></div></div>
+          <div class="expiry-badge" style="margin-bottom:0.75rem">⏰ Expires: ${Utils.formatDateTime(result.token.expiresAt)}</div>
+          <div style="background:var(--clr-surface-2);border:1px solid var(--clr-border);border-radius:var(--radius);padding:0.75rem;font-size:0.8rem;word-break:break-all;font-family:monospace">${result.link}</div>
+        </div>`,
+        `<button class="btn btn-ghost" onclick="Utils.closeModal()">Close</button>
+         <button class="btn btn-primary" onclick="Utils.copyToClipboard('${result.link}')">📋 Copy Link</button>`
+      );
+      Utils.toast(`Registration email sent to ${email}`, 'success');
+      this.render();
+    } catch (err) {
+      Utils.toast('Failed to send email: ' + err.message, 'error');
+    } finally {
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '📨 Generate & Log Link'; }
+    }
   },
 
-  showBulkSendModal() {
-    const members = DB.getMembers().filter(m => m.status !== 'terminated');
-    Utils.showModal(
-      '📢 Bulk Send',
-      `<div>
-        <div class="alert alert-info"><span class="alert-icon">ℹ️</span><div class="alert-content">Send links to multiple members at once.</div></div>
-        <div style="display:flex;flex-direction:column;gap:0.75rem">
-          <button class="btn btn-outline" style="justify-content:flex-start" onclick="Utils.closeModal();Pages.adminMembers.bulkSendUpdate()">📨 Send Update Links to All Active Members</button>
-          <button class="btn btn-outline" style="justify-content:flex-start" onclick="Utils.closeModal();Notifications.bulkPaymentReminder('email')">💰 Send Payment Reminders (Email)</button>
-          <button class="btn btn-outline" style="justify-content:flex-start" onclick="Utils.closeModal();Notifications.bulkPaymentReminder('whatsapp')">📱 Send Payment Reminders (WhatsApp)</button>
-          <button class="btn btn-outline" style="justify-content:flex-start" onclick="Utils.closeModal();Notifications.bulkSemiAnnualReminder()">🔔 Send Semi-Annual Verification Reminders</button>
-        </div>
-        <p style="font-size:0.75rem;color:var(--clr-text-muted);margin-top:1rem">Sending to ${members.length} eligible members. All notifications are logged in the audit trail.</p>
-      </div>`,
-      `<button class="btn btn-ghost" onclick="Utils.closeModal()">Cancel</button>`
-    );
-  },
 
-  bulkSendUpdate() {
-    const active = DB.getMembers().filter(m => m.status === 'active');
-    active.forEach(m => Utils.sendUpdateLink(m.id));
-    Utils.toast(`Update links sent to ${active.length} active members`, 'success');
-  },
 
   showAddPaymentModal(id) {
     const m = DB.getMember(id);
