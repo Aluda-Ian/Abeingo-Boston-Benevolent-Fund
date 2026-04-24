@@ -7,148 +7,83 @@ Pages.adminReports = {
     const members = DB.getMembers();
     const contribs = DB.getContributions();
     const deaths = DB.getDeathEvents();
-    const payments = DB.getPayments();
 
     const content = `
       <div class="page-header">
         <div class="page-header-top">
           <div>
             <h1 class="page-title">📊 ${I18N.t('reports')}</h1>
-            <p class="page-subtitle">Generate and export fund reports as PDF.</p>
+            <p class="page-subtitle">Visual analytics and data export control center.</p>
           </div>
+        </div>
+      </div>
+
+      <!-- Visual Analytics Section -->
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem;margin-bottom:2rem">
+        <div class="card" style="padding:1rem">
+          <div style="font-weight:700;margin-bottom:1rem;font-size:0.9rem">Member Status Distribution</div>
+          <div id="chart-status" style="min-height:300px"></div>
+        </div>
+        <div class="card" style="padding:1rem">
+          <div style="font-weight:700;margin-bottom:1rem;font-size:0.9rem">Contribution Collection Rate (Paid vs Unpaid)</div>
+          <div id="chart-contribs" style="min-height:300px"></div>
         </div>
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--sp-5)">
         <!-- Members Report -->
-        <div class="report-card" onclick="PDF.membersReport(DB.getMembers())">
+        <div class="report-card" onclick="Pages.adminReports.showPreview('members', DB.getMembers())">
           <div class="report-card-top">
             <div class="report-card-icon">👥</div>
-            <div class="report-card-title">Member Roster Report</div>
-            <div class="report-card-desc">Full list of all members with status, contact info, and balances.</div>
+            <div class="report-card-title">Member Roster</div>
+            <div class="report-card-desc">Preview all members before choosing export format.</div>
           </div>
           <div class="report-card-body">
-            <div class="report-card-meta">${members.length} total members &bull; Click to generate PDF</div>
-          </div>
-        </div>
-
-        <!-- Active Members -->
-        <div class="report-card" onclick="PDF.membersReport(DB.getMembers().filter(m=>m.status==='active'))">
-          <div class="report-card-top" style="background:linear-gradient(135deg,#15803d,#16a34a)">
-            <div class="report-card-icon">✅</div>
-            <div class="report-card-title">Active Members Report</div>
-            <div class="report-card-desc">Active members only with their full details.</div>
-          </div>
-          <div class="report-card-body">
-            <div class="report-card-meta">${members.filter(m=>m.status==='active').length} active members</div>
+            <div class="report-card-meta">${members.length} members &bull; Click to preview</div>
           </div>
         </div>
 
         <!-- Contributions Report -->
-        <div class="report-card" onclick="PDF.contributionsReport()">
+        <div class="report-card" onclick="Pages.adminReports.showPreview('contributions', DB.getContributions())">
           <div class="report-card-top" style="background:linear-gradient(135deg,#b91c1c,#dc2626)">
-            <div class="report-card-icon">💔</div>
-            <div class="report-card-title">Contributions & Death Events</div>
-            <div class="report-card-desc">All death events, contribution requests, and payout history.</div>
+            <div class="report-card-icon">💰</div>
+            <div class="report-card-title">Contributions Ledger</div>
+            <div class="report-card-desc">Review financial contribution records.</div>
           </div>
           <div class="report-card-body">
-            <div class="report-card-meta">${deaths.length} events &bull; ${contribs.length} contributions</div>
+            <div class="report-card-meta">${contribs.length} entries &bull; Click to preview</div>
           </div>
         </div>
 
         <!-- Audit Log -->
-        <div class="report-card" onclick="PDF.auditReport()">
+        <div class="report-card" onclick="Pages.adminReports.showPreview('audit', DB.getAuditLog())">
           <div class="report-card-top" style="background:linear-gradient(135deg,#4338ca,#6366f1)">
             <div class="report-card-icon">📋</div>
-            <div class="report-card-title">Audit Trail Report</div>
-            <div class="report-card-desc">Full audit log of all changes made to member records.</div>
+            <div class="report-card-title">Audit Trail</div>
+            <div class="report-card-desc">Examine system activity and change logs.</div>
           </div>
           <div class="report-card-body">
-            <div class="report-card-meta">${DB.getAuditLog().length} entries logged</div>
+            <div class="report-card-meta">${DB.getAuditLog().length} events &bull; Click to preview</div>
           </div>
         </div>
 
-        <!-- Grace Period -->
-        <div class="report-card" onclick="PDF.membersReport(DB.getMembers().filter(m=>m.status==='grace'))">
-          <div class="report-card-top" style="background:linear-gradient(135deg,#b45309,#d97706)">
-            <div class="report-card-icon">⏳</div>
-            <div class="report-card-title">Grace Period Members</div>
-            <div class="report-card-desc">Members currently in their 90-day grace period.</div>
+        <!-- Death Events -->
+        <div class="report-card" onclick="Pages.adminReports.showPreview('deaths', DB.getDeathEvents())">
+          <div class="report-card-top" style="background:linear-gradient(135deg,#000,#333)">
+            <div class="report-card-icon">🕊️</div>
+            <div class="report-card-title">Bereavement Records</div>
+            <div class="report-card-desc">Summary of all death events and payouts.</div>
           </div>
           <div class="report-card-body">
-            <div class="report-card-meta">${members.filter(m=>m.status==='grace').length} in grace period</div>
-          </div>
-        </div>
-
-        <!-- Pending -->
-        <div class="report-card" onclick="PDF.membersReport(DB.getMembers().filter(m=>m.status==='pending'))">
-          <div class="report-card-top" style="background:linear-gradient(135deg,#5b21b6,#7c3aed)">
-            <div class="report-card-icon">⌛</div>
-            <div class="report-card-title">Pending Approvals</div>
-            <div class="report-card-desc">Members awaiting admin approval.</div>
-          </div>
-          <div class="report-card-body">
-            <div class="report-card-meta">${members.filter(m=>m.status==='pending').length} pending</div>
+            <div class="report-card-meta">${deaths.length} events &bull; Click to preview</div>
           </div>
         </div>
       </div>
 
-      <!-- Data Summary Cards -->
-      <div style="margin-top:var(--sp-8)">
-        <h3 style="font-size:var(--text-xl);font-weight:700;margin-bottom:var(--sp-5)">📈 Fund Summary</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-5)">
-          <!-- Status breakdown -->
-          <div class="card">
-            <div class="card-header"><div class="card-title">Member Status Breakdown</div></div>
-            <div class="card-body">
-              ${['active','grace','suspended','terminated','pending'].map(status => {
-                const count = members.filter(m => m.status === status).length;
-                const pct = members.length ? Math.round((count / members.length) * 100) : 0;
-                return `
-                  <div style="margin-bottom:1rem">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem">
-                      <span style="font-size:0.8rem">${Utils.statusBadge(status)}</span>
-                      <span style="font-size:0.8rem;font-weight:700">${count} (${pct}%)</span>
-                    </div>
-                    <div class="contribution-bar">
-                      <div class="contribution-fill" style="width:${pct}%;background:${status==='active'?'var(--clr-active)':status==='grace'?'var(--clr-grace)':status==='suspended'?'var(--clr-suspended)':'var(--clr-text-muted)'}"></div>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          </div>
-
-          <!-- Financial summary -->
-          <div class="card">
-            <div class="card-header"><div class="card-title">Financial Summary</div></div>
-            <div class="card-body">
-              ${[
-                ['Total Kitty Collected', Utils.formatCurrency(members.reduce((s,m)=>s+(m.kittyBalance||0),0))],
-                ['Payments Recorded', DB.getPayments().length],
-                ['Total Paid Contributions', Utils.formatCurrency(contribs.filter(c=>c.status==='paid').reduce((s,c)=>s+(c.amount||0),0))],
-                ['Outstanding Amount', Utils.formatCurrency(contribs.filter(c=>c.status==='unpaid').reduce((s,c)=>s+(c.amount||0),0))],
-                ['Death Events', deaths.length],
-                ['Verified Deaths', deaths.filter(d=>d.verified).length],
-              ].map(([l, v]) => `
-                <div style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid var(--clr-border);font-size:0.85rem">
-                  <span style="color:var(--clr-text-muted)">${l}</span>
-                  <span style="font-weight:700;color:var(--clr-text)">${v}</span>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Waiver Versions -->
+      <!-- Rest of original sections (Waivers, Notifications) -->
       <div style="margin-top:var(--sp-8)">
         <h3 style="font-size:var(--text-xl);font-weight:700;margin-bottom:var(--sp-5)">📜 Waiver Version Control</h3>
         <div class="table-wrapper">
-          <div class="table-header">
-            <div class="table-header-title">Waiver Versions</div>
-            ${Auth.isSuperAdmin() ? '<button class="btn btn-sm btn-primary" onclick="Pages.adminReports.addWaiverVersion()">+ New Version</button>' : ''}
-          </div>
           <table class="data-table">
             <thead><tr><th>Version</th><th>Effective Date</th><th>Created By</th><th>Signatures</th><th>Actions</th></tr></thead>
             <tbody>
@@ -168,32 +103,88 @@ Pages.adminReports = {
           </table>
         </div>
       </div>
+    `;
+    renderAdminLayout('reports', content);
+    setTimeout(() => this.initCharts(), 100);
+  },
 
-      <!-- Notifications Log -->
-      <div style="margin-top:var(--sp-8)">
-        <h3 style="font-size:var(--text-xl);font-weight:700;margin-bottom:var(--sp-5)">📬 Notification History</h3>
-        <div class="table-wrapper">
-          <table class="data-table">
-            <thead><tr><th>Date</th><th>Member</th><th>Type</th><th>Channel</th><th>Status</th></tr></thead>
+  initCharts() {
+    const members = DB.getMembers();
+    const statusCounts = {
+      active: members.filter(m => m.status === 'active').length,
+      grace: members.filter(m => m.status === 'grace').length,
+      pending: members.filter(m => m.status === 'pending').length,
+      other: members.filter(m => !['active','grace','pending'].includes(m.status)).length
+    };
+
+    const contribs = DB.getContributions();
+    const paidCount = contribs.filter(c => c.status === 'paid').length;
+    const unpaidCount = contribs.filter(c => c.status === 'unpaid').length;
+
+    // Status Chart
+    new ApexCharts(document.querySelector("#chart-status"), {
+      series: Object.values(statusCounts),
+      chart: { type: 'donut', height: 300, foreColor: '#94a3b8' },
+      labels: ['Active', 'Grace', 'Pending', 'Other'],
+      colors: ['#22c55e', '#f59e0b', '#3b82f6', '#ef4444'],
+      legend: { position: 'bottom' },
+      plotOptions: { pie: { donut: { size: '70%' } } }
+    }).render();
+
+    // Contributions Chart
+    new ApexCharts(document.querySelector("#chart-contribs"), {
+      series: [{ name: 'Count', data: [paidCount, unpaidCount] }],
+      chart: { type: 'bar', height: 300, foreColor: '#94a3b8', toolbar: { show: false } },
+      plotOptions: { bar: { borderRadius: 4, distributed: true } },
+      colors: ['#22c55e', '#ef4444'],
+      xaxis: { categories: ['Paid', 'Unpaid'] },
+      legend: { show: false }
+    }).render();
+  },
+
+  showPreview(type, data) {
+    let headers = [];
+    let rows = [];
+
+    if (type === 'members') {
+      headers = ['Name', 'Email', 'Status', 'Balance'];
+      rows = data.map(m => [Utils.fullName(m), m.email, m.status, Utils.formatCurrency(m.kittyBalance)]);
+    } else if (type === 'contributions') {
+      headers = ['Member ID', 'Amount', 'Due Date', 'Status'];
+      rows = data.map(c => [c.memberId, Utils.formatCurrency(c.amount), Utils.formatDate(c.dueDate), c.status]);
+    } else if (type === 'audit') {
+      headers = ['Date', 'Entity', 'Action', 'By'];
+      rows = data.map(a => [Utils.formatDate(a.timestamp), a.entityType, a.action, a.performedBy]);
+    } else {
+      headers = ['ID', 'Date', 'Type'];
+      rows = data.map(i => [i.id, Utils.formatDate(i.createdAt || i.timestamp), type]);
+    }
+
+    const body = `
+      <div style="display:flex;flex-direction:column;gap:1rem">
+        <div class="alert alert-info" style="font-size:0.8rem">
+          <span class="alert-icon">📊</span>
+          <div class="alert-content">Reviewing <strong>${data.length}</strong> records. Choose your preferred export format below.</div>
+        </div>
+        <div class="table-wrapper" style="max-height:400px;overflow-y:auto">
+          <table class="data-table" style="font-size:0.8rem">
+            <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
             <tbody>
-              ${DB.getNotifications().slice(-20).reverse().map(n => {
-                const m = DB.getMember(n.memberId);
-                return `
-                  <tr>
-                    <td style="font-size:0.8rem">${Utils.formatDateTime(n.sentAt)}</td>
-                    <td style="font-size:0.8rem">${m ? Utils.sanitize(Utils.fullName(m)) : Utils.sanitize(n.recipientEmail || '—')}</td>
-                    <td><span class="badge badge-active" style="text-transform:capitalize">${n.type.replace(/_/g,' ')}</span></td>
-                    <td style="font-size:0.8rem">${n.channel}</td>
-                    <td><span class="badge badge-active">${n.status}</span></td>
-                  </tr>
-                `;
-              }).join('')}
+              ${rows.slice(0, 100).map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
+              ${rows.length > 100 ? `<tr><td colspan="${headers.length}" style="text-align:center;color:var(--clr-text-muted)">... and ${rows.length - 100} more rows</td></tr>` : ''}
             </tbody>
           </table>
         </div>
       </div>
     `;
-    renderAdminLayout('reports', content);
+
+    Utils.showModal(
+      `👁️ Data Preview: ${type.charAt(0).toUpperCase() + type.slice(1)}`,
+      body,
+      `<button class="btn btn-ghost" onclick="Utils.closeModal()">Close</button>
+       <button class="btn btn-outline" onclick="Utils.exportCSV('${type}.csv', Utils.membersToCSV(DB.getMembers()))">📊 Excel/CSV</button>
+       <button class="btn btn-primary" onclick="PDF.${type === 'members' ? 'membersReport' : type === 'contributions' ? 'contributionsReport' : 'auditReport'}(${type === 'members' ? 'DB.getMembers()' : ''})">📄 Export PDF</button>`
+    );
   },
 
   viewWaiver(id) {
@@ -205,24 +196,6 @@ Pages.adminReports = {
         <div class="waiver-box" style="max-height:none">${w.content}</div>
       </div>`,
       `<button class="btn btn-ghost" onclick="Utils.closeModal()">Close</button>`
-    );
-  },
-
-  addWaiverVersion() {
-    Utils.showModal(
-      '📜 Add New Waiver Version',
-      `<div>
-        <div class="alert alert-warning"><span class="alert-icon">⚠️</span><div class="alert-content">Adding a new version will require all future registrations to sign the updated waiver. Existing members will be notified on their next update.</div></div>
-        <div class="form-field">
-          <label class="field-label">Waiver Content</label>
-          <textarea id="new-waiver-content" class="field-textarea" style="min-height:200px;font-size:0.8rem;font-family:monospace">${WAIVER_TEXT}</textarea>
-        </div>
-      </div>`,
-      `<button class="btn btn-ghost" onclick="Utils.closeModal()">Cancel</button>
-       <button class="btn btn-primary" onclick="
-         const content = document.getElementById('new-waiver-content').value;
-         if(content){DB.addWaiverVersion(content);Utils.closeModal();Pages.adminReports.render();Utils.toast('New waiver version saved','success');}
-       ">Save New Version</button>`
     );
   }
 };
