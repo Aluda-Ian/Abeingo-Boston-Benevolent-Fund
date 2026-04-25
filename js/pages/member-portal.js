@@ -5,16 +5,17 @@ Pages.memberPortal = {
   activeTab: 'profile',
 
   render() {
-    if (!Auth.requireMember()) return;
-    const member = DB.getMember(Auth.currentUser.id);
-    if (!member) { Auth.logout(); return; }
+    try {
+      if (!Auth.requireMember()) return;
+      const member = DB.getMember(Auth.currentUser.id);
+      if (!member) { Auth.logout(); return; }
 
-    const contributions = DB.getMemberContributions(member.id);
-    const payments = DB.getMemberPayments(member.id);
-    const docs = DB.getMemberDocuments(member.id);
-    const unpaid = contributions.filter(c => c.status === 'unpaid');
-    const graceEnd = Utils.graceEndDate(member);
-    const inGrace = Utils.isInGracePeriod(member);
+      const contributions = DB.getMemberContributions(member.id);
+      const payments = DB.getMemberPayments(member.id);
+      const docs = DB.getMemberDocuments(member.id);
+      const unpaid = contributions.filter(c => c.status === 'unpaid');
+      const graceEnd = Utils.graceEndDate(member);
+      const inGrace = Utils.isInGracePeriod(member);
 
     document.getElementById('app-root').innerHTML = `
       <div style="min-height:100vh;background:var(--clr-bg)">
@@ -97,6 +98,17 @@ Pages.memberPortal = {
         </div>
       </div>
     `;
+    } catch (err) {
+      console.error('Portal render crash:', err);
+      document.getElementById('app-root').innerHTML = `
+        <div style="text-align:center;padding:4rem">
+          <div style="font-size:3rem">⚠️</div>
+          <h2>Dashboard Error</h2>
+          <p style="color:var(--clr-text-muted);margin:1rem 0">Something went wrong while loading your dashboard. Please try refreshing.</p>
+          <button class="btn btn-primary" onclick="location.reload()">Refresh Page</button>
+        </div>
+      `;
+    }
   },
 
   setTab(tab) {

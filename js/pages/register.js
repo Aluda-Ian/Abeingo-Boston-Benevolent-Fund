@@ -721,8 +721,8 @@ Pages.register = {
       memberId: 'admin',
       type: 'new_application',
       channel: 'email',
-      message: `New application received from ${this.formData.firstName} ${this.formData.lastName}. Please review in Pending Approvals.`,
-      subject: 'Abeingo Boston Benevolent Fund – New Application',
+      message: `New application received from ${this.formData.firstName} ${this.formData.lastName}. Documents: ${Object.keys(this.uploadedFiles).length} files uploaded. Please review in Pending Approvals.`,
+      subject: 'Abeingo BBF – New Application & Documents',
       status: 'sent',
       recipientEmail: adminEmail
     });
