@@ -15,11 +15,6 @@ app.use('/css', express.static(path.join(__dirname, 'css')));
 app.use('/js', express.static(path.join(__dirname, 'js')));
 app.use(express.static(__dirname));
 
-// Explicitly serve index.html for the root path
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
 // Database setup
 const dbFilePath = path.join(__dirname, 'data.json');
 if (!fs.existsSync(dbFilePath)) {
@@ -147,7 +142,7 @@ app.post('/api/send-bulk', async (req, res) => {
 });
 
 // SPA Fallback: Serve index.html for any other non-API routes
-app.get('*', (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
