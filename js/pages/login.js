@@ -146,7 +146,7 @@ Pages.login = {
     
     if (user) {
       const token = DB.generateToken(type === 'admin' ? 'admin_reset' : 'password_reset', user.id, email);
-      const link = Utils.generateLink(token.id, 'reset-password');
+      const link = Utils.generateLink(token);
       await Notifications.sendPasswordReset(user, link);
       Utils.toast('Reset link sent to ' + email, 'success');
     } else {

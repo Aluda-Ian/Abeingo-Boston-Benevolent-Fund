@@ -84,10 +84,16 @@ const Utils = {
   },
 
   // Generate unique link URL (simulated)
-  generateLink(token) {
+  generateLink(token, pageOverride = null) {
     const base = window.location.origin + window.location.pathname;
-    const type = token.type === 'registration' ? 'register' : 'update';
-    return `${base}?page=${type}&token=${token.id}`;
+    let page = pageOverride;
+    if (!page && typeof token === 'object') {
+      if (token.type === 'registration') page = 'register';
+      else if (token.type === 'update') page = 'update';
+      else if (token.type.includes('reset')) page = 'reset-password';
+    }
+    const tokenId = typeof token === 'object' ? token.id : token;
+    return `${base}?page=${page || 'landing'}&token=${tokenId}`;
   },
 
   // Copy to clipboard
