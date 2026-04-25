@@ -13,6 +13,11 @@ app.use(express.json({ limit: '50mb' }));
 // Serve static files from the root directory
 app.use(express.static(__dirname));
 
+// Explicitly serve index.html for the root path
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // Database setup
 const dbFilePath = path.join(__dirname, 'data.json');
 if (!fs.existsSync(dbFilePath)) {
@@ -137,6 +142,11 @@ app.post('/api/send-bulk', async (req, res) => {
     message,
     results: notifications // Send back the updated statuses
   });
+});
+
+// SPA Fallback: Serve index.html for any other non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
