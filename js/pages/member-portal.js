@@ -114,7 +114,7 @@ Pages.memberPortal = {
   setTab(tab) {
     this.activeTab = tab;
     document.querySelectorAll('.tab-btn').forEach((b, i) => {
-      const tabs = ['profile','family','contributions','documents','notifications','tickets','messages'];
+      const tabs = ['profile','family','contributions','documents','notifications','tickets','messages','forum'];
       b.classList.toggle('active', tabs[i] === tab);
     });
     const member = DB.getMember(Auth.currentUser.id);
@@ -621,8 +621,6 @@ Pages.memberPortal = {
     `;
   },
 
-  },
-
   renderTickets(member) {
     const tickets = DB.getTickets().filter(t => t.memberId === member.id).reverse();
     return `
@@ -770,7 +768,7 @@ Pages.memberPortal = {
           </div>
           <div class="card-footer" style="background:var(--clr-surface-2)">
             <div style="display:flex;gap:0.75rem">
-              <input type="text" id="member-message-input" class="form-control" placeholder="Type your message..." onkeypress="if(event.key==='Enter') Pages.memberPortal.sendMessage()">
+              <input type="text" id="member-message-input" class="field-input" placeholder="Type your message..." onkeypress="if(event.key==='Enter') Pages.memberPortal.sendMessage()">
               <button class="btn btn-primary" onclick="Pages.memberPortal.sendMessage()">Send</button>
             </div>
           </div>
