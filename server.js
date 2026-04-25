@@ -10,6 +10,9 @@ const PORT = process.env.PORT || 3500;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+// Serve static files from the root directory
+app.use(express.static(__dirname));
+
 // Database setup
 const dbFilePath = path.join(__dirname, 'data.json');
 if (!fs.existsSync(dbFilePath)) {

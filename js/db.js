@@ -10,7 +10,7 @@ const DB = {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout
 
-      const res = await fetch('http://localhost:3500/api/db', { signal: controller.signal });
+      const res = await fetch('/api/db', { signal: controller.signal });
       clearTimeout(timeoutId);
 
       if (res.ok) {
@@ -28,7 +28,7 @@ const DB = {
           if (migrated) {
             const postController = new AbortController();
             const postTimeoutId = setTimeout(() => postController.abort(), 2000);
-            await fetch('http://localhost:3500/api/db', {
+            await fetch('/api/db', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(this._state),
@@ -84,7 +84,7 @@ const DB = {
   set(key, value) {
     if (this._state) {
       this._state[key] = value;
-      fetch('http://localhost:3500/api/db', {
+      fetch('/api/db', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(this._state)
@@ -412,7 +412,7 @@ const DB = {
           throw new Error('SMTP is not fully configured in the Settings page.');
         }
 
-        const response = await fetch('http://localhost:3500/api/send-bulk', {
+        const response = await fetch('/api/send-bulk', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notifications, smtpSettings: settings })
