@@ -10,7 +10,9 @@ const PORT = process.env.PORT || 3500;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-// Serve static files from the root directory
+// Serve static files with absolute paths
+app.use('/css', express.static(path.join(__dirname, 'css')));
+app.use('/js', express.static(path.join(__dirname, 'js')));
 app.use(express.static(__dirname));
 
 // Explicitly serve index.html for the root path
