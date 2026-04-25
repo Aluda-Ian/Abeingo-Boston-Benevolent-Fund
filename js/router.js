@@ -26,8 +26,14 @@ const Router = {
     'committee-forum': (params) => Pages.adminForum.render(params),
     'settings':     () => Pages.adminSettings.render(),
     // Member portal
-    'portal':       () => Pages.memberPortal.render(),
-    'reset-password':() => Pages.resetPassword.render(),
+    'portal':       () => (Pages.memberPortal ? Pages.memberPortal.render() : Router.showLoadingPage()),
+    'reset-password':() => (Pages.resetPassword ? Pages.resetPassword.render() : Router.showLoadingPage()),
+  },
+
+  showLoadingPage() {
+    const root = document.getElementById('app-root');
+    if (root) root.innerHTML = '<div style="text-align:center;padding:4rem"><div class="spin">⟳</div><p>Loading components...</p></div>';
+    setTimeout(() => this.handleHashChange(), 500); // Retry once loaded
   },
 
   navigate(page, params = {}) {
@@ -118,9 +124,10 @@ const Router = {
       // Fallback to URL search params for legacy links
       const searchParams = new URLSearchParams(window.location.search);
       if (searchParams.has('page')) {
+        // Clear hash if we are migrating from search params to prevent #portal conflicts
+        window.location.hash = '';
         page = searchParams.get('page');
         searchParams.forEach((v, k) => { if (k !== 'page') params[k] = v; });
-        // Migrate to hash immediately to avoid issues
         this.navigate(page, params);
         return;
       }
