@@ -734,38 +734,53 @@ Pages.memberPortal = {
   },
 
   renderMessages(member) {
-    const messages = DB.getMessages().filter(m => m.memberId === member.id);
-    return `
-      <div style="margin-top:1.5rem;height:500px;display:flex;flex-direction:column" class="card">
-        <div class="card-header"><div class="card-title">💬 Direct Messages with Admin</div></div>
-        <div id="member-chat-box" style="flex:1;overflow-y:auto;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;background:var(--clr-surface-1)">
-          ${messages.map(m => `
-            <div style="align-self:${m.from === 'member' ? 'flex-end' : 'flex-start'};max-width:80%">
-              <div style="font-size:0.7rem;color:var(--clr-text-muted);margin-bottom:2px;text-align:${m.from === 'member' ? 'right' : 'left'}">${m.from === 'member' ? 'You' : 'Admin'} &bull; ${Utils.formatDateTime(m.timestamp)}</div>
-              <div style="padding:0.8rem 1rem;border-radius:1rem;background:${m.from === 'member' ? 'var(--clr-primary)' : 'var(--clr-surface-3)'};color:${m.from === 'member' ? 'white' : 'inherit'};${m.from==='member'?'border-bottom-right-radius:0':'border-bottom-left-radius:0'}">
-                ${Utils.sanitize(m.text)}
-              </div>
+    try {
+      const allMessages = DB.getMessages() || [];
+      const messages = allMessages.filter(m => m && m.memberId === member.id);
+      
+      return `
+        <div style="margin-top:1.5rem;height:500px;display:flex;flex-direction:column" class="card">
+          <div class="card-header"><div class="card-title">💬 Direct Messages with Admin</div></div>
+          <div id="member-chat-box" style="flex:1;overflow-y:auto;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;background:var(--clr-surface-1)">
+            ${messages.map(m => {
+              try {
+                return `
+                  <div style="align-self:${m.from === 'member' ? 'flex-end' : 'flex-start'};max-width:80%">
+                    <div style="font-size:0.7rem;color:var(--clr-text-muted);margin-bottom:2px;text-align:${m.from === 'member' ? 'right' : 'left'}">${m.from === 'member' ? 'You' : 'Admin'} &bull; ${Utils.formatDateTime(m.timestamp)}</div>
+                    <div style="padding:0.8rem 1rem;border-radius:1rem;background:${m.from === 'member' ? 'var(--clr-primary)' : 'var(--clr-surface-3)'};color:${m.from === 'member' ? 'white' : 'inherit'};${m.from==='member'?'border-bottom-right-radius:0':'border-bottom-left-radius:0'}">
+                      ${Utils.sanitize(m.text)}
+                    </div>
+                  </div>
+                `;
+              } catch (e) { return ''; }
+            }).join('')}
+            ${!messages.length ? '<div style="text-align:center;margin-top:2rem;color:var(--clr-text-muted)">No messages yet. Send a message to start a conversation.</div>' : ''}
+          </div>
+          <div class="card-footer" style="background:var(--clr-surface-2)">
+            <div style="display:flex;gap:0.75rem">
+              <input type="text" id="member-message-input" class="form-control" placeholder="Type your message..." onkeypress="if(event.key==='Enter') Pages.memberPortal.sendMessage()">
+              <button class="btn btn-primary" onclick="Pages.memberPortal.sendMessage()">Send</button>
             </div>
-          `).join('')}
-          ${!messages.length ? '<div style="text-align:center;margin-top:2rem;color:var(--clr-text-muted)">No messages yet. Send a message to start a conversation.</div>' : ''}
+          </div>
         </div>
-        <div style="padding:1rem;border-top:1px solid var(--clr-border);display:flex;gap:0.75rem;background:white">
-          <textarea id="member-chat-input" class="field-input" placeholder="Type a message..." rows="1" style="border-radius:2rem;padding-left:1.25rem" onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); Pages.memberPortal.sendMessage(); }"></textarea>
-          <button class="btn btn-primary" style="border-radius:50%;width:44px;height:44px;padding:0;display:flex;align-items:center;justify-content:center" onclick="Pages.memberPortal.sendMessage()">🚀</button>
-        </div>
-      </div>
-    `;
+      `;
+    } catch (err) {
+      console.error('Messages render error:', err);
+      return `<div class="card" style="padding:2rem;text-align:center"><h3>Messages Unavailable</h3><p>${err.message}</p></div>`;
+    }
   },
 
   sendMessage() {
-    const input = document.getElementById('member-chat-input');
+    const input = document.getElementById('member-message-input');
+    if (!input) return;
     const text = input.value.trim();
     if (!text) return;
 
     DB.saveMessage({
       memberId: Auth.currentUser.id,
       from: 'member',
-      text: text
+      text: text,
+      timestamp: new Date().toISOString()
     });
 
     input.value = '';
