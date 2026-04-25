@@ -64,7 +64,12 @@ const Router = {
 
     const renderer = this.routes[page];
     if (renderer) {
-      renderer(this.currentParams);
+      try {
+        renderer(this.currentParams);
+      } catch (err) {
+        console.error('Render error:', err);
+        root.innerHTML = `<div style="text-align:center;padding:4rem"><h2>Application Error</h2><p style="color:var(--clr-text-muted)">${err.message}</p></div>`;
+      }
     } else {
       root.innerHTML = '<div style="text-align:center;padding:4rem"><h2>Page not found</h2></div>';
     }

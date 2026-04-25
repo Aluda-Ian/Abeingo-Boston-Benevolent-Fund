@@ -14,9 +14,15 @@ const DB = {
       clearTimeout(timeoutId);
 
       if (res.ok) {
-        this._state = await res.json();
+        const text = await res.text();
+        try {
+          this._state = JSON.parse(text);
+        } catch (e) {
+          console.error('Invalid JSON from server', e);
+          this._state = {}; // Use empty state if invalid
+        }
         
-        if (Object.keys(this._state).length === 0) {
+        if (this._state && Object.keys(this._state).length === 0) {
           let migrated = false;
           Object.values(this.KEYS).forEach(k => {
             const val = localStorage.getItem(k);
